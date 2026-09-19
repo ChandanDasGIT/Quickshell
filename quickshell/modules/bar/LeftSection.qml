@@ -220,7 +220,7 @@ RowLayout {
                                         1: "", 2: "", 3: "", 4: "", 5: "",
                                         6: "", 7: "", 8: "", 9: "", 10: ""
                                     }
-                                    return icons[wsDelegate.modelData.id] || ""
+                                    return icons[wsDelegate.modelData.id] || "$"
                                 }
                                 color: "#ffffff"
                                 font.pixelSize: 20

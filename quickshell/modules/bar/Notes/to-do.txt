@@ -1,23 +1,17 @@
-1. virtual keyboard on waybar on-click
-
-//install the game via bottles
-
-//exchange all windows of two workspace
- or take all windows of one workspace to another
-
-// the scrollable page is not following typing cursor while typing at the end (Notes.qml)
-
-// intro ctrl+s to save in Notes.qml
-
 //make recents apps shown in applauncer.qml
 
-2.QuickShell: 
-	1. brightness slider for diff monitor in RightSection.qml
+//click on middlesection.qml to open merkuro
+
+2. c++ app: ESSENTIAL: 
+	1. brightness slider for diff monitor (ddcutil)
+	2. App wise sound output
+	3. mouse keyboard sensi, polling hz, dpi and accelaration type.
+	4. monitor refresh rate.
+	5. seeing storage (remaining and total)
+-------------------------------
+//Quickshell :
 	2. make the icons have dynamic sizing and space control
 	3. Walpaper changer -- apply animations
-	4. App wise sound output
-
-	
 3. learn: rust + slint // c++ & qt6 qml
 
 4. MangoJuice

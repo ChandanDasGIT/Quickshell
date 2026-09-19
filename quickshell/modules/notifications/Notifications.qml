@@ -13,12 +13,13 @@ Scope {
     id: root
 
     // ---- Theme / tunables ----------------------------------------------
-    property color bgColor: "#1e1e2e"
-    property color cardColor: "#313244"
-    property color borderColor: "#45475a"
-    property color textColor: "#cdd6f4"
-    property color subTextColor: "#a6adc8"
-    property color accentColor: "#89b4fa"
+    property color bgColor: "#000000"
+    property color cardColor: "#1a1a1a"
+    property color popupCardColor: "#e6141414"   // near-black with subtle transparency, for toast popups only
+    property color borderColor: "#2a2a2a"
+    property color textColor: "#ffffff"
+    property color subTextColor: "#b3b3b3"
+    property color accentColor: "#232d40"
     property color criticalColor: "#f38ba8"
 
     property int popupWidth: 360
@@ -205,7 +206,7 @@ Scope {
                     width: root.popupWidth
                     implicitHeight: cardContent.implicitHeight + 20
                     radius: 12
-                    color: root.cardColor
+                    color: root.popupCardColor
                     clip: true
                     opacity: 1.0
 

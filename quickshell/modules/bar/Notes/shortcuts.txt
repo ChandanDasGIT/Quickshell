@@ -1,5 +1,11 @@
-#WORKSPACE
+#GIT Workflow
+	git pull
+	work
+	git add .
+	git commit -m ""
+	git push
 
+#WORKSPACE
 win+tab = next workspace
 alt+tab = next workspace
 win+arrowKeys = change focus
