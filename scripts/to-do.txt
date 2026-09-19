@@ -1,0 +1,38 @@
+1. virtual keyboard on waybar on-click
+//experiment with wine4office
+
+8. workspaces that contain any window will be underlined
+
+
+2.QuickShell: 
+	1. brightness slider for diff monitor in RightSection.qml
+	2. make the icons have dynamic sizing and space control
+	3. Walpaper changer
+	4. App wise sound output
+
+	$ a system where if i try to open a file and it's already opened in a diff workspace, it would take me there
+
+	
+3. learn: rust + slint // c++ & qt6 qml
+
+4. MangoJuice
+
+5. change shortcut update: auto system snapshot and if update makes something wrong it will auto revert to the snapshot
+
+6. #recreate the yt-downloader with c++ & qml and add two buttons:
+		1. a select download folder button
+		2. quality selector button
+
+7. change brightness slider for diff monitor
+
+
+10. kvms
+
+
+[X] apps to recreate in c++:
+		1. snake game
+		2. notepad
+		3. local music player
+		4. vid editor
+		5. daw
+		6. cc tv app
