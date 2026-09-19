@@ -2,6 +2,8 @@
 
 //click on middlesection.qml to open merkuro
 
+//[re[are a list of dependencies for quickshell
+
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)
 	2. App wise sound output
