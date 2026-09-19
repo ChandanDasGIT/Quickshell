@@ -1,6 +1,7 @@
 //@ pragma UseQApplication
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
@@ -346,6 +347,44 @@ Item {
 
         // ================= tray =======================================
         Tray{}
+
+        // ================= battery ===================
+
+        Segment {
+            id: batterySegment
+            property var device: UPower.displayDevice
+            property int capacity: Math.round((device?.percentage ?? 0) * 100)
+            property bool charging: device?.state === UPowerDeviceState.Charging
+            property bool plugged: device?.state === UPowerDeviceState.PendingCharge || charging
+
+            icon: charging ? "\uf0e7"
+            : capacity <= 15 ? "\uf244"
+            : capacity <= 30 ? "\uf243"
+            : capacity <= 60 ? "\uf242"
+            : capacity <= 90 ? "\uf241"
+            : "\uf240"
+
+            label: device ? capacity + "%" : "--"
+
+            ToolTip.visible: hovered
+            ToolTip.delay: 400
+            ToolTip.text: {
+                if (!device) return "No battery detected"
+                    var status = charging ? "Charging" : (plugged ? "Plugged in" : "Discharging")
+                    var timeLeft = charging ? device.timeToFull : device.timeToEmpty
+                    var timeStr = timeLeft > 0
+                    ? Math.floor(timeLeft / 3600) + "h " + Math.floor((timeLeft % 3600) / 60) + "m"
+                    : "calculating..."
+                    return status + "\n" + (charging ? "Time to full: " : "Time remaining: ") + timeStr
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                onEntered: batterySegment.hovered = true
+                onExited: batterySegment.hovered = false
+            }
+        }
 
         // ================= custom/power ==============================
         Segment {
