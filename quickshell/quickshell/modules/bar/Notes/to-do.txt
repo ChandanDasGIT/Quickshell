@@ -1,0 +1,36 @@
+//make recents apps shown in applauncer.qml
+
+// chapter 5 done //
+
+////is there a nug in workspace.qml that is making me go to 3th workspace where a diff kate is opened. even though i was on 2nd workspace and i opened a new kate window there? ////
+--group alt tab workspace wise--
+
+//prepare a list of dependencies for quickshell
+.................................
+1. left section: display currently playing audio
+2. click on middlesection.qml to open merkuro
+.................................
+
+2. c++ app: ESSENTIAL: 
+	1. brightness slider for diff monitor (ddcutil)
+	2. App wise sound output
+	3. mouse keyboard sensi, polling hz, dpi and accelaration type.
+	4. monitor refresh rate.
+	5. seeing storage (remaining and total)
+-------------------------------
+//Quickshell :
+	2. make the icons have dynamic sizing and space control
+	3. Walpaper changer -- apply animations
+3. learn: c++ & qt6 qml and python
+
+5. change shortcut update: auto system snapshot and if update makes something wrong it will auto revert to the snapshot
+
+
+[X] apps to recreate in c++:
+		1. snake game
+		2. notepad
+		3. local music player
+		4. vid editor
+		5. daw
+		6. cc tv app
+		7. ricing tool for hyprland
