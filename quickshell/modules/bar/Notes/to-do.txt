@@ -2,6 +2,8 @@
 
 //click on middlesection.qml to open merkuro
 
+// chapter 5 done //
+
 //[re[are a list of dependencies for quickshell
 
 2. c++ app: ESSENTIAL: 

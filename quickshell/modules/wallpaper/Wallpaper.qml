@@ -1,33 +1,48 @@
 pragma Singleton
 import QtQuick
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-
 Item {
     id: root
 
-    // change this to your actual wallpaper folder
+    // Change this to your actual wallpaper folder
     property string wallpaperDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
 
     property var images: []
     property int currentIndex: 0
-    property int direction: 1   // 1 = forward/next, -1 = backward/prev
+    property int direction: 1   // 1 = forward/next (expand), -1 = backward/prev (shrink)
     readonly property string currentPath: images.length > 0 ? images[currentIndex] : ""
 
+    // Debounce guard to prevent rapid clicking
+    property bool canChange: true
+
     function next() {
-        if (images.length === 0) return
-            direction = 1
-            currentIndex = (currentIndex + 1) % images.length
-            autoTimer.restart()
+        if (images.length === 0 || !canChange) return;
+        canChange = false;
+        direction = 1;
+        currentIndex = (currentIndex + 1) % images.length;
+        cooldownTimer.restart();
+        autoTimer.restart();
     }
 
     function prev() {
-        if (images.length === 0) return
-            direction = -1
-            currentIndex = (currentIndex - 1 + images.length) % images.length
-            autoTimer.restart()
+        if (images.length === 0 || !canChange) return;
+        canChange = false;
+        direction = -1;
+        currentIndex = (currentIndex - 1 + images.length) % images.length;
+        cooldownTimer.restart();
+        autoTimer.restart();
+    }
+
+    // 2-second cooldown timer before wallpaper can be changed again
+    Timer {
+        id: cooldownTimer
+        interval: 1500
+        repeat: false
+        onTriggered: root.canChange = true
     }
 
     Process {
@@ -38,9 +53,9 @@ Item {
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                root.images = text.trim().split("\n").filter(p => p.length > 0)
+                root.images = text.trim().split("\n").filter(p => p.length > 0);
                 if (root.images.length > 0)
-                    root.currentIndex = Math.floor(Math.random() * root.images.length)
+                    root.currentIndex = Math.floor(Math.random() * root.images.length);
             }
         }
     }
@@ -77,67 +92,132 @@ Item {
             Item {
                 id: switcher
                 anchors.fill: parent
-                clip: true
 
-                property bool aIsFront: true
+                property url displayedSource: ""
+                property url incomingSource: ""
+                property bool isTransitioning: false
 
+                readonly property real centerX: switcher.width / 2
+                readonly property real centerY: switcher.height / 2
+                property real revealRadius: 0
+                readonly property real maximumRevealRadius: Math.sqrt(centerX * centerX + centerY * centerY) + 16
+
+                function startReveal() {
+                    if (root.direction >= 0) {
+                        // Forward: Expand from center out (0 -> max)
+                        revealRadius = 0;
+                        circleAnim.from = 0;
+                        circleAnim.to = maximumRevealRadius;
+                    } else {
+                        // Backward: Shrink from outside in (max -> 0)
+                        revealRadius = maximumRevealRadius;
+                        circleAnim.from = maximumRevealRadius;
+                        circleAnim.to = 0;
+                    }
+
+                    isTransitioning = true;
+                    circleAnim.restart();
+                }
+
+                function finishTransition() {
+                    displayedSource = incomingSource;
+                    incomingSource = "";
+                    isTransitioning = false;
+                    revealRadius = 0;
+                }
+
+                // 1. Base Layer
                 Image {
-                    id: imgA
-                    y: 0
-                    width: switcher.width
-                    height: switcher.height
+                    id: baseImage
+                    anchors.fill: parent
+                    source: (root.direction < 0 && switcher.isTransitioning)
+                    ? switcher.incomingSource
+                    : switcher.displayedSource
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
-                    cache: false
-                    z: switcher.aIsFront ? 1 : 0
+                    cache: true
+                    smooth: true
+                    mipmap: true
+                }
 
-                    Behavior on x {
-                        id: imgAXBehavior
-                        NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
+                // 2. Transitioning Image Layer (rendered offscreen for masking)
+                Image {
+                    id: transitionImage
+                    anchors.fill: parent
+                    source: (root.direction < 0)
+                    ? switcher.displayedSource
+                    : switcher.incomingSource
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: true
+                    smooth: true
+                    mipmap: true
+                    visible: false
+
+                    onStatusChanged: {
+                        if (status === Image.Ready && switcher.incomingSource !== "" && !switcher.isTransitioning) {
+                            switcher.startReveal();
+                        }
                     }
                 }
 
-                Image {
-                    id: imgB
-                    y: 0
-                    width: switcher.width
-                    height: switcher.height
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    cache: false
-                    z: switcher.aIsFront ? 0 : 1
+                // 3. Mask: A circle fixed exactly in the center
+                Item {
+                    id: maskContainer
+                    anchors.fill: parent
+                    visible: false
 
-                    Behavior on x {
-                        id: imgBXBehavior
-                        NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
+                    Rectangle {
+                        x: switcher.centerX - switcher.revealRadius
+                        y: switcher.centerY - switcher.revealRadius
+                        width: Math.max(0, switcher.revealRadius * 2)
+                        height: Math.max(0, switcher.revealRadius * 2)
+                        radius: switcher.revealRadius
+                        color: "white"
+                        antialiasing: true
                     }
+                }
+
+                // 4. Alpha Mask compositor
+                OpacityMask {
+                    anchors.fill: parent
+                    source: transitionImage
+                    maskSource: maskContainer
+                    visible: switcher.isTransitioning
+                }
+
+                // Longer animation with an InOut curve for a smoother feel
+                NumberAnimation {
+                    id: circleAnim
+                    target: switcher
+                    property: "revealRadius"
+                    duration: 1400
+                    easing.type: Easing.InOutCubic
+                    onFinished: switcher.finishTransition()
                 }
 
                 Component.onCompleted: {
-                    imgA.source = root.currentPath ? "file://" + root.currentPath : ""
-                    imgA.x = 0
+                    if (root.currentPath)
+                        displayedSource = "file://" + root.currentPath;
                 }
 
                 Connections {
                     target: root
                     function onCurrentPathChanged() {
-                        const front = switcher.aIsFront ? imgA : imgB
-                        const back = switcher.aIsFront ? imgB : imgA
-                        const backBehavior = switcher.aIsFront ? imgBXBehavior : imgAXBehavior
+                        const nextUrl = root.currentPath ? "file://" + root.currentPath : "";
+                        if (!nextUrl || nextUrl === switcher.displayedSource.toString())
+                            return;
 
-                        const offscreenX = root.direction > 0 ? switcher.width : -switcher.width
+                        if (switcher.displayedSource === "") {
+                            switcher.displayedSource = nextUrl;
+                            return;
+                        }
 
-                        // place the incoming image off-screen instantly, no animation
-                        backBehavior.enabled = false
-                        back.source = root.currentPath ? "file://" + root.currentPath : ""
-                        back.x = offscreenX
-                        backBehavior.enabled = true
+                        switcher.incomingSource = nextUrl;
 
-                        switcher.aIsFront = !switcher.aIsFront
-
-                            // animate both: incoming slides to center, outgoing slides fully off the other side
-                            back.x = 0
-                            front.x = -offscreenX
+                        if (transitionImage.status === Image.Ready && !switcher.isTransitioning) {
+                            switcher.startReveal();
+                        }
                     }
                 }
             }
