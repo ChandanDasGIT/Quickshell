@@ -1,0 +1,24 @@
+[general]
+bars = 10
+framerate = 60
+channels = stereo
+reverse = 1
+
+[input]
+method = pulse
+source = auto
+
+[output]
+method = raw
+raw_target = /dev/stdout
+data_format = ascii
+ascii_max_range = 7
+bar_delimiter = 59
+
+
+[smoothing]
+# Reduces neighboring bar bleeding so bass and treble stay distinct
+monstercat = 1
+
+# Custom characters for vertical bars
+ascii_chars =  ▂▃▄▅▆▇█

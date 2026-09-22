@@ -1,0 +1,69 @@
+#GIT Workflow
+	git pull
+	work
+	git add .
+	git commit -m ""
+	git push
+
+#WORKSPACE
+win+arrowKeys = change focus
+win+scroll up/down = next/prev workspace
+win+{1...10} = nth workspace
+
+#SYSTEM
+alt+f4 = shut down
+win+print = screenshot + save
+win+shift+print = partial screenshot + save
+win+shift+c = colorpicker
+ctrl+print = partial screenshot + copy - save
+ctrl+shit+print = OCR
+ctrl+shift+space = Spotlight search 
+win+x = see TO-Do & SHORTCUTS
+
+#MOUNT
+mountd = mount chandan & study drives
+
+#APPs
+win+c         = close APPs
+win+e         = file manager
+win+f         = firefox
+win+m         = shut down hyprland
+win+p         = pseudo
+win+q         = terminal
+win+r         = nwg-drawer
+win+space     = appMenu
+win+t         = kate
+win+v         = float
+win+z         = fullscreen
+win+alt+v = clipboard history
+win+alt+space = nwg-dock-hyprland
+win+shift+c = colorpicker
+
+#MUSIC
+ctrl+space = play/pause
+ctrl+left = prev track
+ctrl+right = next track
+ctrl+up/down = vol up/down
+
+   TARMINAL SHORTCUTS:
+change-monitor='switch-monitor'
+switch-display='switch-monitor'
+change-display='switch-monitor'
+change-monitor-15='switch-monitor'
+change-display-15='switch-monitor'
+change-monitor-hdmi='switch-monitor'
+change-display-hdmi='switch-monitor'
+install='sudo pacman -S --noconfirm'
+update='sudo pacman -Syu --noconfirm'
+uninstall='sudo pacman -Rns --noconfirm'
+cgpt='carbonyl https://chatgpt.com/'
+
+hyprland-lua = "$HOME/.config/hypr/hyprland.lua"
+hl = "$HOME/.config/hypr/hyprland.lua"
+waybar-conf = "$HOME/.config/waybar/config"
+waybar-css ="$HOME/.config/waybar/style.css"
+docker-css ="$HOME/.config/nwg-dock-hyprland/style.css"
+drawer-css = "$HOME/.config/nwg-drawer/drawer.css"
+drc = "$HOME/.config/nwg-drawer/drawer.css"
+bashrc|script = "$HOME/.config/bash/bashrc"
+

@@ -1,0 +1,40 @@
+# Directories are always included automatically
+
+lua
+
+# Microsoft Office & Documents
+doc
+docx
+docm
+dot
+dotx
+xls
+xlsx
+xlsm
+xlsb
+xlt
+xltx
+ppt
+pptx
+pptm
+pps
+ppsx
+
+# OpenDocument & Plain Text
+pdf
+txt
+
+# Audio
+mp3
+flac
+wav
+m4a
+ogg
+opus
+
+# Video
+mp4
+mkv
+webm
+mov
+avi

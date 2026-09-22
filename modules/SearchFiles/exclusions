@@ -1,0 +1,62 @@
+# Development & runtime environments
+.rustup/
+node_modules/
+__pycache__/
+.local/share/Trash/
+.git/
+
+# Heavy dot-directories in home (prune instantly)
+.cache/
+.cargo/
+.copilot/
+.dotnet/
+.local/
+.nv/
+.pki/
+.steam/
+.var/
+.vscode/
+.vscode-shared/
+.winboat/
+.wine*/
+
+# Large/unwanted Home directories
+AppData/
+bzmenu/
+cpp-journey/
+dmenu-bluetooth/
+networkmanager-dmenu/
+opt/
+Pictures/
+Public/
+Qt/
+rpm-backups/
+Templates/
+Videos/
+VirtualBox VMs/
+Waybar*/
+winboat/
+
+# Heavy ~/.config application trees
+.config/BraveSoftware/
+.config/Code/
+.config/discord/
+.config/google-chrome/
+.config/chromium/
+.config/mozilla/
+.config/libreoffice/
+.config/libvirt/
+.config/nautilus/
+.config/qBittorrent/
+.config/VirtualBox/
+.config/vlc/
+.config/REAPER/
+.config/easyeffects/
+.config/ml4w/
+.config/plasma*/
+.config/k*/
+.config/akonadi*/
+.config/gtk*/
+.config/dconf/
+.config/menus/
+.config/xfce4/
