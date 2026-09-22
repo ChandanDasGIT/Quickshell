@@ -1,7 +1,18 @@
 // chapter 8 needs to be done //
 // start chapter 9 //
 
-//need to set default apps for searchbar.qml
+[[--Git update:
+	quickshell
+--]]
+
+//create theme.qml for quickshell
+
+//bar icons are not aligned
+
+//why is copying something doesn't paste if i close the window that i copied from
+
+//press esc or click outside to close pavucontroll window
+//same for power menu
 
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)

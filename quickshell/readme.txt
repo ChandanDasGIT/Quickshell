@@ -14,7 +14,7 @@ sudo dnf downgrade ~/rpm-backups/quickshell-0.3.1-2.fc44.x86_64.rpm
         sudo pacman -S --needed \
         quickshell qt6-5compat qt6-declarative qt6-wayland qt6-imageformats \
         ttf-jetbrains-mono-nerd papirus-icon-theme \
-        pipewire wireplumber upower \
+        pipewire wireplumber ydotool upower \
         cava playerctl pavucontrol jq fd fzf xdg-utils merkuro
     2. Fedora:
         # Enable Nerd Fonts repo
@@ -25,8 +25,9 @@ sudo dnf downgrade ~/rpm-backups/quickshell-0.3.1-2.fc44.x86_64.rpm
             quickshell \
             qt6-qt5compat qt6-qtdeclarative qt6-qtwayland qt6-qtimageformats \
             nerd-fonts-JetBrainsMono papirus-icon-theme \
-            pipewire wireplumber upower \
+            pipewire wireplumber ydotool upower \
             cava playerctl pavucontrol jq fd-find fzf xdg-utils merkuro
+## Need setup for virtual keyboard -- see YDoTool.txt
 
 #Quickshell shortcuts for hyprland.lua
     --QUICKSHELL bindings

@@ -8,15 +8,17 @@ import Quickshell.Wayland
 Item {
     id: root
 
-    // Change this to your actual wallpaper folder
     property string wallpaperDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
+
+    // Category / "Theme" states
+    property var categories: ["All"]
+    property string activeCategory: "All"
 
     property var images: []
     property int currentIndex: 0
     property int direction: 1   // 1 = forward/next (expand), -1 = backward/prev (shrink)
     readonly property string currentPath: images.length > 0 ? images[currentIndex] : ""
 
-    // Debounce guard to prevent rapid clicking
     property bool canChange: true
 
     function next() {
@@ -37,7 +39,40 @@ Item {
         autoTimer.restart();
     }
 
-    // 2-second cooldown timer before wallpaper can be changed again
+    // Scans top-level folders dynamically on demand
+    function refreshCategories() {
+        listCategoriesProc.running = true;
+    }
+
+    // Switches theme/category and immediately triggers a wallpaper load
+    function setCategory(cat) {
+        if (activeCategory === cat && images.length > 0) return;
+        activeCategory = cat;
+        loadImagesForCategory(cat);
+    }
+
+    function loadImagesForCategory(cat) {
+        let targetDir = root.wallpaperDir;
+        if (cat !== "All") {
+            targetDir = root.wallpaperDir + "/" + cat;
+        }
+
+        // Standard find command constructed entirely via argument array (no shell wrapper needed)
+        listImagesProc.command = [
+            "find", targetDir,
+            "-type", "f",
+            "(",
+            "-iname", "*.jpg", "-o",
+            "-iname", "*.jpeg", "-o",
+            "-iname", "*.png", "-o",
+            "-iname", "*.webp",
+            ")",
+            "!", "-empty"
+        ];
+        listImagesProc.running = true;
+    }
+
+    // Timer cooldown
     Timer {
         id: cooldownTimer
         interval: 1500
@@ -45,17 +80,29 @@ Item {
         onTriggered: root.canChange = true
     }
 
+    // 1. Process to list subdirectories inside ~/Pictures/Wallpapers
     Process {
-        id: listProc
-        command: ["bash", "-c",
-        "find \"" + root.wallpaperDir + "\" -maxdepth 1 -type f " +
-        "\\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) | sort"]
+        id: listCategoriesProc
+        command: ["find", root.wallpaperDir, "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-printf", "%f\n"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                root.images = text.trim().split("\n").filter(p => p.length > 0);
-                if (root.images.length > 0)
-                    root.currentIndex = Math.floor(Math.random() * root.images.length);
+                let lines = text.trim().split("\n").filter(p => p.length > 0).sort();
+                root.categories = ["All", ...lines];
+            }
+        }
+    }
+
+    // 2. Process to populate images based on current category
+    Process {
+        id: listImagesProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let found = text.trim().split("\n").filter(p => p.length > 0).sort();
+                root.images = found;
+                if (found.length > 0) {
+                    root.currentIndex = Math.floor(Math.random() * found.length);
+                }
             }
         }
     }
@@ -68,6 +115,11 @@ Item {
         onTriggered: root.next()
     }
 
+    Component.onCompleted: {
+        loadImagesForCategory("All");
+    }
+
+    // Screen Renderers
     Variants {
         model: Quickshell.screens
 
@@ -104,12 +156,10 @@ Item {
 
                 function startReveal() {
                     if (root.direction >= 0) {
-                        // Forward: Expand from center out (0 -> max)
                         revealRadius = 0;
                         circleAnim.from = 0;
                         circleAnim.to = maximumRevealRadius;
                     } else {
-                        // Backward: Shrink from outside in (max -> 0)
                         revealRadius = maximumRevealRadius;
                         circleAnim.from = maximumRevealRadius;
                         circleAnim.to = 0;
@@ -140,7 +190,7 @@ Item {
                     mipmap: true
                 }
 
-                // 2. Transitioning Image Layer (rendered offscreen for masking)
+                // 2. Transitioning Image Layer
                 Image {
                     id: transitionImage
                     anchors.fill: parent
@@ -161,7 +211,7 @@ Item {
                     }
                 }
 
-                // 3. Mask: A circle fixed exactly in the center
+                // 3. Mask: Fixed center circle
                 Item {
                     id: maskContainer
                     anchors.fill: parent
@@ -186,7 +236,6 @@ Item {
                     visible: switcher.isTransitioning
                 }
 
-                // Longer animation with an InOut curve for a smoother feel
                 NumberAnimation {
                     id: circleAnim
                     target: switcher

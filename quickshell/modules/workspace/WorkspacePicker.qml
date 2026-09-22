@@ -482,4 +482,43 @@ Item {
             }
         }
     }
+
+    PanelWindow {
+        id: bottomTrigger
+        screen: Quickshell.focusedScreen
+
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "quickshell-workspace-trigger"
+        exclusionMode: ExclusionMode.Ignore
+        color: "transparent"
+
+        anchors {
+            bottom: true
+            top: false
+            left: false
+            right: false
+        }
+
+        width: 420
+        height: 2
+        visible: !root.pickerVisible
+
+        Timer {
+            id: triggerDelay
+            interval: 80 // Requires cursor to rest on edge for 80ms to prevent accidental triggers
+            repeat: false
+            onTriggered: {
+                if (!root.pickerVisible) {
+                    root.toggle()
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: triggerDelay.start()
+            onExited: triggerDelay.stop()
+        }
+    }
 }

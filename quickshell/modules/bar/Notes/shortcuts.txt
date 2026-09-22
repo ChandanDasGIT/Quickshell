@@ -18,7 +18,10 @@ win+shift+c = colorpicker
 ctrl+print = partial screenshot + copy - save
 ctrl+shit+print = OCR
 ctrl+shift+space = Spotlight search 
+ctrl+shift+W = change wallpaper 
 win+x = see TO-Do & SHORTCUTS
+win+W = Workspace Switcher(also available if u hit the mid bottom screen with mouse)
+
 
 #MOUNT
 mountd = mount chandan & study drives

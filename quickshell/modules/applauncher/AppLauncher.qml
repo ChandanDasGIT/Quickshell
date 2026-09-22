@@ -6,10 +6,6 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 
-// A fuzzel-style application launcher for Quickshell with Recent Apps support.
-//
-// Place this file at: modules/applauncher/AppLauncher.qml
-
 Scope {
     id: root
 

@@ -1,0 +1,33 @@
+bash
+
+## Fedora:
+
+1. mkdir -p ~/.config/systemd/user
+2.  cat << 'EOF' > ~/.config/systemd/user/ydotoold.service
+    [Unit]
+    Description=ydotoold backend daemon
+    PartOf=graphical-session.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/bin/ydotoold
+    Restart=always
+    RestartSec=2
+
+    [Install]
+    WantedBy=default.target
+    EOF
+3. sudo usermod -aG input $USER
+4. echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/80-uinput.rules
+5.  sudo modprobe uinput
+    sudo udevadm control --reload-rules && sudo udevadm trigger
+6. systemctl --user daemon-reload
+systemctl --user enable --now ydotoold
+7. Check: systemctl --user status ydotoold
+8. Varify: sleep 2 && ydotool type "hello"
+
+## Arch
+1. sudo gpasswd -a $USER input
+2. sudo systemctl enable --now ydotool.service
+3. ydotool type "Hello World"
+

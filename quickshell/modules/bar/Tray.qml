@@ -50,7 +50,7 @@ Rectangle {
                 Desaturate {
                     anchors.fill: trayIcon
                     source: trayIcon
-                    desaturation: 1.0 // 1.0 = fully grayscale, 0.0 = full color
+                    desaturation: 0.0 // 1.0 = fully grayscale, 0.0 = full color
                 }
 
                 MouseArea {

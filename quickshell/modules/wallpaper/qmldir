@@ -1,1 +1,2 @@
 singleton Wallpaper Wallpaper.qml
+WallpaperSelector WallpaperSelector.qml

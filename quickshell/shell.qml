@@ -7,6 +7,7 @@ import "modules/applauncher"
 import "modules/notifications"
 import "modules/workspace"
 import "modules/SearchFiles"
+import "modules/virtualkeyboard"
 
 ShellRoot {
     readonly property var _wallpaperInit: Wallpaper.currentPath
@@ -17,4 +18,7 @@ ShellRoot {
     AppLauncher {}
     Notifications {}
     SearchFiles {}
+    WallpaperSelector {}
+    VirtualKeyboard {}
+    CornerTrigger {}
 }

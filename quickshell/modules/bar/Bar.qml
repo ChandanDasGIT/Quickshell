@@ -8,19 +8,30 @@ import "."
 PanelWindow {
     id: bar
 
-    //exclusionMode: ExclusionMode.Normal
-    anchors { top: true; left: true; right: true }
-    implicitHeight: 34
-    color: "#0f000000" // approximates rgba(0,0,0,0.65)
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.namespace: "quickshell-bar"
+    exclusionMode: ExclusionMode.Auto
 
+    anchors {
+        top: true
+        left: true
+        right: true
+    }
+
+    height: 34
+    implicitHeight: 34
+    color: "transparent"
+
+    // Frosted Glass Base Layer
     Rectangle {
         anchors.fill: parent
-        color: "#000000"
-        border.color: "#80647d7d"
-        border.width: 0
+        // Translucent background: Hex #AARRGGBB (~60% opacity black)
+        color: "#99121212"
+
+        // Bottom border only
         Rectangle {
             width: parent.width
-            height: 3
+            height: 2
             anchors.bottom: parent.bottom
             color: "#80647d7d"
         }
