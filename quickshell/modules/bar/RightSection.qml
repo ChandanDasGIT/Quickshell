@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Services.SystemTray
@@ -392,57 +393,85 @@ Item {
             icon: "\u23fb"
             onClicked: powerMenu.visible = !powerMenu.visible
         }
+
         PopupWindow {
             id: powerMenu
             anchor.item: powerSeg
             anchor.edges: Edges.Bottom | Edges.Right
             anchor.gravity: Edges.Bottom | Edges.Left
             anchor.rect.x: powerSeg.width
-            anchor.rect.y: powerSeg.height + 4
-            implicitWidth: 140
-            implicitHeight: menuCol.implicitHeight + 8
-            color: "#cc1a1a1a"
+            anchor.rect.y: powerSeg.height + 6
+            implicitWidth: 145
+            implicitHeight: menuCol.implicitHeight + 16
+            color: "transparent"
             visible: false
 
-            ColumnLayout {
-                id: menuCol
+            HyprlandFocusGrab {
+                id: grab
+                windows: [powerMenu]
+                onActiveChanged: {
+                    if (!active) {
+                        powerMenu.visible = false;
+                    }
+                }
+            }
+
+            onVisibleChanged: {
+                if (visible) {
+                    Qt.callLater(function() { grab.active = true; });
+                } else {
+                    grab.active = false;
+                }
+            }
+
+            // Minimalist Black & White / Frosted Glass card
+            Rectangle {
                 anchors.fill: parent
-                anchors.margins: 4
-                spacing: 2
+                color: "#e60d0d0d"       // Deep matte obsidian/black (90% opacity)
+                radius: 10
+                border.width: 1
+                border.color: "#38ffffff" // Subtle frosted white edge
 
-                Segment {
-                    Layout.fillWidth: true
-                    label: "Shutdown"
-                    onClicked: {
-                        Quickshell.execDetached(["systemctl", "poweroff"]);
-                        powerMenu.visible = false;
+                ColumnLayout {
+                    id: menuCol
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 3
+
+                    Segment {
+                        Layout.fillWidth: true
+                        label: "Shutdown"
+                        onClicked: {
+                            Quickshell.execDetached(["systemctl", "poweroff"]);
+                            powerMenu.visible = false;
+                        }
                     }
-                }
 
-                Segment {
-                    Layout.fillWidth: true
-                    label: "Reboot"
-                    onClicked: {
-                        Quickshell.execDetached(["systemctl", "reboot"]);
-                        powerMenu.visible = false;
+                    Segment {
+                        Layout.fillWidth: true
+                        label: "Reboot"
+                        onClicked: {
+                            Quickshell.execDetached(["systemctl", "reboot"]);
+                            powerMenu.visible = false;
+                        }
                     }
-                }
 
-                Segment {
-                    Layout.fillWidth: true
-                    label: "Suspend"
-                    onClicked: {
-                        Quickshell.execDetached(["systemctl", "suspend"]);
-                        powerMenu.visible = false;
+                    Segment {
+                        Layout.fillWidth: true
+                        label: "Suspend"
+                        onClicked: {
+                            Quickshell.execDetached(["systemctl", "suspend"]);
+                            powerMenu.visible = false;
+                        }
                     }
-                }
 
-                Segment {
-                    Layout.fillWidth: true
-                    label: "Hibernate"
-                    onClicked: {
-                        Quickshell.execDetached(["systemctl", "hibernate"]);
-                        powerMenu.visible = false;
+                    Segment {
+                        Layout.fillWidth: true
+                        label: "Hibernate"
+                        onClicked: {
+                            Quickshell.execDetached(["systemctl", "hibernate"]);
+                            powerMenu.visible = false;
+                        }
                     }
                 }
             }

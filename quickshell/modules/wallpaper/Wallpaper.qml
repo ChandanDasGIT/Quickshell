@@ -9,6 +9,19 @@ Item {
     id: root
 
     property string wallpaperDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
+    property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell_current_wallpaper"
+
+    FileView {
+        id: cacheFile
+        path: root.stateFile
+        blockLoading: true
+    }
+
+    onCurrentPathChanged: {
+        if (currentPath !== "") {
+            cacheFile.setText(currentPath);
+        }
+    }
 
     // Category / "Theme" states
     property var categories: ["All"]
@@ -101,7 +114,22 @@ Item {
                 let found = text.trim().split("\n").filter(p => p.length > 0).sort();
                 root.images = found;
                 if (found.length > 0) {
-                    root.currentIndex = Math.floor(Math.random() * found.length);
+                    let savedPath = cacheFile.text().trim();
+                    let savedIndex = found.indexOf(savedPath);
+
+                    if (savedIndex !== -1) {
+                        root.currentIndex = savedIndex;
+
+                        // Deduce active folder category from saved image path
+                        let rel = savedPath.replace(root.wallpaperDir + "/", "");
+                        if (rel.indexOf("/") !== -1) {
+                            root.activeCategory = rel.split("/")[0];
+                        } else {
+                            root.activeCategory = "All";
+                        }
+                    } else {
+                        root.currentIndex = Math.floor(Math.random() * found.length);
+                    }
                 }
             }
         }

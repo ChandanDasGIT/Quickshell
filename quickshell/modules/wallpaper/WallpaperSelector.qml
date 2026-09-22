@@ -26,6 +26,15 @@ PanelWindow {
     color: "transparent"
     visible: false
 
+    function syncIndex(): void {
+        if (!Wallpaper.categories || Wallpaper.categories.length === 0) return;
+        let activeIdx = Wallpaper.categories.indexOf(Wallpaper.activeCategory);
+        if (activeIdx !== -1) {
+            pathView.currentIndex = activeIdx;
+            pathView.positionViewAtIndex(activeIdx, PathView.Center);
+        }
+    }
+
     function toggle(): void {
         if (!selectorWindow.visible) show();
         else hide();
@@ -38,6 +47,22 @@ PanelWindow {
 
     function hide(): void {
         selectorWindow.visible = false;
+    }
+
+    onVisibleChanged: {
+        if (visible) {
+            syncIndex();
+            Qt.callLater(syncIndex);
+        }
+    }
+
+    Connections {
+        target: Wallpaper
+        function onCategoriesChanged() {
+            if (selectorWindow.visible) {
+                selectorWindow.syncIndex();
+            }
+        }
     }
 
     IpcHandler {
