@@ -36,6 +36,7 @@ sudo dnf downgrade ~/rpm-backups/quickshell-0.3.1-2.fc44.x86_64.rpm
         hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notifications toggle"))
         hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call workspaces toggle"))
         hl.bind(ctrlMod .. " + SHIFT + Space", hl.dsp.exec_cmd("quickshell ipc call fileSearch toggle"))
+        hl.bind(ctrlMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs ipc call wallpaperSelector toggle"))
 
 
 Future:
