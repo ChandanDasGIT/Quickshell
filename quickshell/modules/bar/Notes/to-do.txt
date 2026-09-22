@@ -1,10 +1,7 @@
-//make recents apps shown in applauncer.qml
+// chapter 8 needs to be done //
+// start chapter 9 //
 
-//click on middlesection.qml to open merkuro
-
-// chapter 5 done //
-
-//[re[are a list of dependencies for quickshell
+//close the notes pop up if click outside
 
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)
@@ -15,18 +12,11 @@
 -------------------------------
 //Quickshell :
 	2. make the icons have dynamic sizing and space control
-	3. Walpaper changer -- apply animations
-3. learn: rust + slint // c++ & qt6 qml
-
-4. MangoJuice
+	
+3. learn: c++ & qt6 qml and python
 
 5. change shortcut update: auto system snapshot and if update makes something wrong it will auto revert to the snapshot
 
-6. #recreate the yt-downloader with c++ & qml and add two buttons:
-		1. a select download folder button
-		2. quality selector button
-
-7. change brightness slider for diff monitor
 
 [X] apps to recreate in c++:
 		1. snake game

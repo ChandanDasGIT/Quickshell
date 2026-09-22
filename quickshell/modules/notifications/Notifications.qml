@@ -12,25 +12,25 @@ import Quickshell.Services.Notifications
 Scope {
     id: root
 
-    // ---- Theme / tunables ----------------------------------------------
-    property color bgColor: "#000000"
-    property color cardColor: "#1a1a1a"
-    property color popupCardColor: "#e6141414"   // near-black with subtle transparency, for toast popups only
-    property color borderColor: "#2a2a2a"
-    property color textColor: "#ffffff"
-    property color subTextColor: "#b3b3b3"
-    property color accentColor: "#232d40"
-    property color criticalColor: "#f38ba8"
+    // ---- Theme / Palette ----------------------------------------------------
+    property color bgColor: "#e61a1c27"          // Deep slate navy translucent
+    property color cardColor: "#222538"         // Elevated card base
+    property color popupCardColor: "#f01c1e2d"   // Toast card background
+    property color borderColor: "#353952"       // Subtle highlight border
+    property color buttonHoverColor: "#333852"  // Interactive button background
+    property color textColor: "#dcdfe7"         // Soft off-white
+    property color subTextColor: "#7d85a0"      // Muted slate gray
+    property color criticalColor: "#f7768e"     // Red warning/error accent
 
-    property int popupWidth: 360
-    property int defaultTimeoutMs: 3000
+    property int popupWidth: 380
+    property int defaultTimeoutMs: 3500
     property int lowUrgencyTimeoutMs: 1500
-    property int fadeDurationMs: 300
+    property int fadeDurationMs: 250
 
     // ---- State ------------------------------------------------------------
     property bool centerVisible: false
-    property bool dnd: false          // when true, suppress toast popups (still logged to history)
-    property var poppedIds: ({})      // notification.id -> true while toast is active
+    property bool dnd: false                    // Suppress toasts when active
+    property var poppedIds: ({})                // notification.id -> true while toast is active
 
     function toggleCenter() { centerVisible = !centerVisible; }
     function showCenter() { centerVisible = true; }
@@ -38,7 +38,7 @@ Scope {
     function toggleDnd() { dnd = !dnd; }
 
     function timeoutFor(n) {
-        if (n.urgency === NotificationUrgency.Critical) return -1; // stays until dismissed
+        if (n.urgency === NotificationUrgency.Critical) return -1;
         if (n.expireTimeout > 0) return n.expireTimeout * 1000;
         if (n.urgency === NotificationUrgency.Low) return root.lowUrgencyTimeoutMs;
         return root.defaultTimeoutMs;
@@ -82,8 +82,7 @@ Scope {
         signal closeClicked()
 
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.margins: 10
+        anchors.margins: 14
         spacing: 6
 
         RowLayout {
@@ -91,8 +90,8 @@ Scope {
             spacing: 8
 
             IconImage {
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
                 source: {
                     if (content.modelData.image !== "") return content.modelData.image;
                     if (content.modelData.appIcon !== "") return Quickshell.iconPath(content.modelData.appIcon, true);
@@ -104,18 +103,28 @@ Scope {
                 Layout.fillWidth: true
                 text: content.modelData.appName || "Notification"
                 color: root.subTextColor
-                font.pixelSize: 12
+                font.pixelSize: 11
+                font.weight: Font.Medium
                 elide: Text.ElideRight
             }
 
-            Text {
-                text: "\u2715"
-                color: root.subTextColor
-                font.pixelSize: 12
+            Rectangle {
+                width: 22
+                height: 22
+                radius: 11
+                color: closeHover.containsMouse ? root.borderColor : "transparent"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2715"
+                    color: closeHover.containsMouse ? root.textColor : root.subTextColor
+                    font.pixelSize: 11
+                }
 
                 MouseArea {
+                    id: closeHover
                     anchors.fill: parent
-                    anchors.margins: -6
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: content.closeClicked()
                 }
@@ -126,8 +135,8 @@ Scope {
             Layout.fillWidth: true
             text: content.modelData.summary
             color: root.textColor
-            font.pixelSize: 14
-            font.bold: true
+            font.pixelSize: 13
+            font.weight: Font.DemiBold
             wrapMode: Text.WordWrap
             visible: text.length > 0
         }
@@ -138,38 +147,44 @@ Scope {
             color: root.subTextColor
             font.pixelSize: 12
             wrapMode: Text.WordWrap
-            maximumLineCount: 4
+            maximumLineCount: 3
             elide: Text.ElideRight
             visible: text.length > 0
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 8
             visible: content.modelData.actions.length > 0
 
             Repeater {
                 model: content.modelData.actions
 
                 delegate: Rectangle {
+                    id: actBtn
                     required property var modelData
                     radius: 8
-                    color: root.borderColor
+                    color: actArea.containsMouse ? root.buttonHoverColor : root.bgColor
+                    border.color: root.borderColor
+                    border.width: 1
                     implicitWidth: actionText.implicitWidth + 16
-                    implicitHeight: actionText.implicitHeight + 8
+                    implicitHeight: actionText.implicitHeight + 10
 
                     Text {
                         id: actionText
                         anchors.centerIn: parent
-                        text: modelData.text
+                        text: actBtn.modelData.text
                         color: root.textColor
                         font.pixelSize: 11
+                        font.weight: Font.Medium
                     }
 
                     MouseArea {
+                        id: actArea
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: modelData.invoke()
+                        onClicked: actBtn.modelData.invoke()
                     }
                 }
             }
@@ -182,7 +197,7 @@ Scope {
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; right: true }
-        margins { top: 44; right: 12 }
+        margins { top: 46; right: 16 }
         implicitWidth: root.popupWidth
         implicitHeight: popupColumn.implicitHeight
 
@@ -192,7 +207,7 @@ Scope {
         Column {
             id: popupColumn
             width: root.popupWidth
-            spacing: 8
+            spacing: 10
 
             Repeater {
                 model: ScriptModel {
@@ -204,20 +219,13 @@ Scope {
                     required property var modelData
 
                     width: root.popupWidth
-                    implicitHeight: cardContent.implicitHeight + 20
-                    radius: 12
+                    implicitHeight: cardContent.implicitHeight + 24
+                    radius: 14
                     color: root.popupCardColor
+                    border.color: root.borderColor
+                    border.width: 1
                     clip: true
                     opacity: 1.0
-
-                    // Urgency accent stripe
-                    Rectangle {
-                        width: 4
-                        height: parent.height
-                        color: toastCard.modelData.urgency === NotificationUrgency.Critical
-                        ? root.criticalColor
-                        : root.accentColor
-                    }
 
                     NotificationContent {
                         id: cardContent
@@ -225,7 +233,6 @@ Scope {
                         onCloseClicked: fadeAnim.start()
                     }
 
-                    // Auto-timeout timer
                     Timer {
                         id: dismissTimer
                         interval: root.timeoutFor(toastCard.modelData)
@@ -234,14 +241,13 @@ Scope {
                         onTriggered: fadeAnim.start()
                     }
 
-                    // Smooth fade-out animation
                     NumberAnimation {
                         id: fadeAnim
                         target: toastCard
                         property: "opacity"
                         to: 0.0
                         duration: root.fadeDurationMs
-                        easing.type: Easing.OutQuad
+                        easing.type: Easing.OutCubic
                         onFinished: root.removePoppedId(toastCard.modelData.id)
                     }
                 }
@@ -257,76 +263,122 @@ Scope {
         focusable: false
         exclusionMode: ExclusionMode.Ignore
 
-        anchors { top: true; bottom: true; right: true }
-        margins { top: 44; bottom: 12; right: 12 }
-        implicitWidth: root.popupWidth + 24
+        anchors { top: true; bottom: true; left: true; right: true }
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:notifications:center"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        Rectangle {
+        // Fullscreen backdrop area to dismiss on outside click
+        MouseArea {
             anchors.fill: parent
-            anchors.margins: 12
+            onClicked: root.hideCenter()
+        }
+
+        // Drawer Container
+        Rectangle {
+            width: root.popupWidth + 24
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                right: parent.right
+                margins: 14
+                topMargin: 46
+            }
             radius: 16
             color: root.bgColor
             border.color: root.borderColor
             border.width: 1
             clip: true
 
+            // Blocks clicks inside the drawer from closing it
+            MouseArea {
+                anchors.fill: parent
+            }
+
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 14
-                spacing: 10
+                anchors.margins: 16
+                spacing: 12
 
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
 
                     Text {
                         text: "Notifications"
                         color: root.textColor
-                        font.pixelSize: 16
-                        font.bold: true
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
                         Layout.fillWidth: true
                     }
 
-                    Text {
-                        text: root.dnd ? "DND: On" : "DND: Off"
-                        color: root.dnd ? root.criticalColor : root.subTextColor
-                        font.pixelSize: 12
+                    Rectangle {
+                        height: 24
+                        implicitWidth: dndLabel.implicitWidth + 16
+                        radius: 12
+                        color: dndArea.containsMouse ? root.buttonHoverColor : root.cardColor
+                        border.color: root.borderColor
+                        border.width: 1
+
+                        Text {
+                            id: dndLabel
+                            anchors.centerIn: parent
+                            text: root.dnd ? "DND On" : "DND Off"
+                            color: root.dnd ? root.criticalColor : root.subTextColor
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                        }
 
                         MouseArea {
+                            id: dndArea
                             anchors.fill: parent
-                            anchors.margins: -6
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: root.toggleDnd()
                         }
                     }
 
-                    Text {
-                        text: "Clear all"
-                        color: root.subTextColor
-                        font.pixelSize: 12
-                        leftPadding: 12
+                    Rectangle {
+                        height: 24
+                        implicitWidth: clearLabel.implicitWidth + 16
+                        radius: 12
                         visible: notifServer.trackedNotifications.values.length > 0
+                        color: clearArea.containsMouse ? root.buttonHoverColor : root.cardColor
+                        border.color: root.borderColor
+                        border.width: 1
+
+                        Text {
+                            id: clearLabel
+                            anchors.centerIn: parent
+                            text: "Clear all"
+                            color: root.subTextColor
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                        }
 
                         MouseArea {
+                            id: clearArea
                             anchors.fill: parent
-                            anchors.margins: -6
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: root.clearAll()
                         }
                     }
                 }
 
-                Rectangle { Layout.fillWidth: true; height: 1; color: root.borderColor }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: root.borderColor
+                }
 
                 ListView {
                     id: historyList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: 8
+                    spacing: 10
                     model: ScriptModel {
                         values: [...notifServer.trackedNotifications.values].reverse()
                     }
@@ -336,18 +388,12 @@ Scope {
                         required property var modelData
 
                         width: root.popupWidth
-                        implicitHeight: historyContent.implicitHeight + 20
+                        implicitHeight: historyContent.implicitHeight + 24
                         radius: 12
                         color: root.cardColor
+                        border.color: root.borderColor
+                        border.width: 1
                         clip: true
-
-                        Rectangle {
-                            width: 4
-                            height: parent.height
-                            color: historyCard.modelData.urgency === NotificationUrgency.Critical
-                            ? root.criticalColor
-                            : root.accentColor
-                        }
 
                         NotificationContent {
                             id: historyContent
@@ -361,7 +407,7 @@ Scope {
                         visible: historyList.count === 0
                         text: "No notifications"
                         color: root.subTextColor
-                        font.pixelSize: 14
+                        font.pixelSize: 13
                     }
                 }
             }

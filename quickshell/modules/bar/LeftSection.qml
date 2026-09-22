@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -282,13 +283,49 @@ RowLayout {
         elide: Text.ElideRight
         Layout.preferredWidth: Math.min(implicitWidth, 200)
 
+        MouseArea {
+            id: mediaHover
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+        }
+
+        PopupWindow {
+            id: mediaTip
+            anchor.item: mediaText
+            anchor.edges: Edges.Bottom | Edges.Left
+            anchor.gravity: Edges.Bottom | Edges.Right
+            anchor.rect.x: 0
+            anchor.rect.y: mediaText.height + 4
+            implicitWidth: mediaTipLabel.implicitWidth + 16
+            implicitHeight: mediaTipLabel.implicitHeight + 12
+            color: "transparent"
+            visible: mediaHover.containsMouse && mediaText.playerOutput !== ""
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 8
+                color: "#cc1a1a1a"
+                border.color: "#22ffffff"
+                border.width: 1
+
+                Text {
+                    id: mediaTipLabel
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: mediaText.playerOutput
+                    color: "#ffffff"
+                    font.pixelSize: 11
+                }
+            }
+        }
+
         Process {
             id: playerctlProc
             command: [
-                "playerctl",
-                "metadata",
-                "--format",
-                "{{artist}} - {{title}}"
+                "sh", "-c",
+                "playerctl -a metadata --format '{{playerName}}|{{status}}|{{artist}} - {{title}}' 2>/dev/null | awk -F'|' '$2==\"Playing\"{print $3; exit}'"
             ]
             running: true
             stdout: StdioCollector {
@@ -303,7 +340,10 @@ RowLayout {
             interval: 1000
             running: true
             repeat: true
-            onTriggered: playerctlProc.running = true
+            onTriggered: {
+                if (!playerctlProc.running)
+                    playerctlProc.running = true
+            }
         }
     }
 
@@ -333,7 +373,7 @@ RowLayout {
                 command: [
                     "cava",
                     "-p",
-                    Quickshell.env("HOME") + "/.config/cava/config_waybar"
+                    Quickshell.env("HOME") + "/.config/quickshell/modules/bar/cava/cava_config"
                 ]
                 running: true
 

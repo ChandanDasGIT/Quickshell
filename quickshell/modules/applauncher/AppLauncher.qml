@@ -1,30 +1,14 @@
 import QtQuick
 import QtQuick.Layouts
+import QtCore
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 
-// A fuzzel-style application launcher for Quickshell.
+// A fuzzel-style application launcher for Quickshell with Recent Apps support.
 //
 // Place this file at: modules/applauncher/AppLauncher.qml
-//
-// Usage from shell.qml (or wherever you assemble your shell):
-//
-//   AppLauncher {
-//       id: appLauncher
-//   }
-//
-//   GlobalShortcut {
-//       name: "appLauncher"
-//       description: "Toggle the app launcher"
-//       onPressed: appLauncher.toggle()
-//   }
-//
-// (GlobalShortcut needs Quickshell.Hyprland / Quickshell's global shortcut
-// portal depending on your compositor -- wire it to whatever keybind
-// mechanism you already use, e.g. an exec-once `qs ipc call` from Hyprland.
-// You can also just call appLauncher.show()/hide()/toggle() directly.)
 
 Scope {
     id: root
@@ -32,9 +16,10 @@ Scope {
     // ---- Tunables -----------------------------------------------------
     property int launcherWidth: 600
     property int launcherHeight: 440
-//    property int maxResults: 9
+    property int maxResults: 10
+    property int maxRecentApps: 10
     property var excludedCategories: ["Settings"]
-    property var excludedNames: ["Contact Sheet", "Print Theme Editor"] // add more substrings here to hide specific apps
+    property var excludedNames: ["Contact Sheet", "Print Theme Editor"]
     property real yPosition: 0.22 // fraction of screen height from top
 
     property color bgColor: "#1e1e2e"
@@ -43,6 +28,26 @@ Scope {
     property color subTextColor: "#a6adc8"
     property color selectedColor: "#313244"
     property color accentColor: "#89b4fa"
+
+    // ---- Persistent Recent Apps Storage ---------------------------------
+    Settings {
+        id: recentStore
+        category: "AppLauncher"
+        property var recentAppIds: []
+    }
+
+    property var recentAppIds: recentStore.recentAppIds || []
+
+    function recordRecentApp(appId) {
+        if (!appId) return;
+        let list = [...root.recentAppIds].filter(id => id !== appId);
+        list.unshift(appId);
+        if (list.length > root.maxRecentApps) {
+            list = list.slice(0, root.maxRecentApps);
+        }
+        root.recentAppIds = list;
+        recentStore.recentAppIds = list;
+    }
 
     // ---- Public API -----------------------------------------------------
     property bool isVisible: false
@@ -61,19 +66,20 @@ Scope {
         if (isVisible) hide(); else show();
     }
 
-    function launch(entry) {
-        if (entry === undefined || entry === null) return;
+    function launch(item) {
+        if (!item) return;
+        const entry = item.entry || item;
+        const appId = entry.id || entry.name;
+        recordRecentApp(appId);
         entry.execute();
         hide();
     }
 
     function launchCurrent() {
-        const entry = list.currentEntry();
-        if (entry) launch(entry);
+        const item = list.currentEntry();
+        if (item) launch(item);
     }
 
-    // Lets a compositor keybind trigger the launcher, e.g.:
-    //   qs ipc call applauncher toggle
     IpcHandler {
         target: "applauncher"
         function toggle(): void { root.toggle(); }
@@ -81,10 +87,7 @@ Scope {
         function hide(): void { root.hide(); }
     }
 
-    // Simple subsequence-based fuzzy matcher (fzf/fuzzel style):
-    // every character of "pattern" must appear in "text" in order.
-    // Returns -1 for no match, otherwise a score where higher = better
-    // (consecutive matches and matches near the start score higher).
+    // Subsequence-based fuzzy matcher
     function fuzzyScore(pattern, text) {
         if (pattern.length === 0) return 0;
         let ti = 0;
@@ -97,15 +100,14 @@ Scope {
 
             if (idx === ti) {
                 consecutive += 1;
-                score += 3 + consecutive; // reward runs of consecutive chars
+                score += 3 + consecutive;
             } else {
                 consecutive = 0;
                 score += 1;
             }
-            if (idx === 0 || text[idx - 1] === " ") score += 2; // word-start bonus
+            if (idx === 0 || text[idx - 1] === " ") score += 2;
             ti = idx + 1;
         }
-        // Slight bonus for shorter overall strings (tighter match)
         score += Math.max(0, 20 - text.length) * 0.05;
         return score;
     }
@@ -135,7 +137,7 @@ Scope {
             }
         }
 
-        // Click outside the card closes the launcher.
+        // Click outside closes the launcher
         MouseArea {
             anchors.fill: parent
             onClicked: root.hide()
@@ -153,8 +155,6 @@ Scope {
             border.width: 1
             clip: true
 
-            // Eat clicks inside the card so they don't bubble to the
-            // full-screen MouseArea above and close the launcher.
             MouseArea {
                 anchors.fill: parent
                 onClicked: (mouse) => mouse.accepted = true
@@ -240,16 +240,38 @@ Scope {
                         values: {
                             const q = root.query.trim().toLowerCase();
                             const all = [...DesktopEntries.applications.values]
-                            .filter(d => d.name && !d.noDisplay)
-                            .filter(d => !(d.categories || []).some(c => root.excludedCategories.includes(c)))
-                            .filter(d => !root.excludedNames.some(n => d.name.toLowerCase().includes(n.toLowerCase())));
+                                .filter(d => d.name && !d.noDisplay)
+                                .filter(d => !(d.categories || []).some(c => root.excludedCategories.includes(c)))
+                                .filter(d => !root.excludedNames.some(n => d.name.toLowerCase().includes(n.toLowerCase())));
 
+                            // When empty query: display up to 10 recent apps first, fill remainder alphabetically
                             if (q === "") {
-                                return all
-                                .sort((a, b) => a.name.localeCompare(b.name))
-                                .slice(0, root.maxResults);
+                                const recentIds = root.recentAppIds;
+                                const recentItems = [];
+                                const remainingApps = [];
+
+                                for (const app of all) {
+                                    const appId = app.id || app.name;
+                                    const recIdx = recentIds.indexOf(appId);
+                                    if (recIdx !== -1) {
+                                        recentItems.push({ entry: app, isRecent: true, order: recIdx });
+                                    } else {
+                                        remainingApps.push({ entry: app, isRecent: false, order: 9999 });
+                                    }
+                                }
+
+                                recentItems.sort((a, b) => a.order - b.order);
+                                remainingApps.sort((a, b) => a.entry.name.localeCompare(b.entry.name));
+
+                                const combined = recentItems.slice(0, root.maxRecentApps);
+                                if (combined.length < root.maxResults) {
+                                    combined.push(...remainingApps.slice(0, root.maxResults - combined.length));
+                                }
+
+                                return combined;
                             }
 
+                            // When typing: filter matched apps (without recent tag)
                             const matched = all.filter(d => {
                                 const words = d.name.toLowerCase().split(/\s+/);
                                 return words.some(w => w.startsWith(q));
@@ -262,7 +284,7 @@ Scope {
                                 return a.name.localeCompare(b.name);
                             });
 
-                            return matched.slice(0, root.maxResults);
+                            return matched.slice(0, root.maxResults).map(d => ({ entry: d, isRecent: false }));
                         }
                     }
 
@@ -270,7 +292,10 @@ Scope {
                         id: delegateRoot
                         required property var modelData
                         required property int index
-                        property string resolvedIcon: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
+
+                        readonly property var appEntry: modelData.entry
+                        readonly property bool isRecent: modelData.isRecent
+                        property string resolvedIcon: (appEntry && appEntry.icon) ? Quickshell.iconPath(appEntry.icon, true) : ""
 
                         width: list.width
                         height: 52
@@ -307,7 +332,7 @@ Scope {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: modelData.name
+                                    text: delegateRoot.appEntry.name
                                     color: root.textColor
                                     font.pixelSize: 15
                                     elide: Text.ElideRight
@@ -315,11 +340,33 @@ Scope {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: modelData.comment || ""
+                                    text: delegateRoot.appEntry.comment || ""
                                     color: root.subTextColor
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
                                     visible: text.length > 0
+                                }
+                            }
+
+                            // ---- "Recent" Badge Tag ----
+                            Rectangle {
+                                visible: delegateRoot.isRecent
+                                Layout.alignment: Qt.AlignVCenter
+                                Layout.rightMargin: 4
+                                implicitWidth: recentTagText.implicitWidth + 12
+                                implicitHeight: 20
+                                radius: 5
+                                color: Qt.alpha(root.accentColor, 0.18)
+                                border.color: Qt.alpha(root.accentColor, 0.4)
+                                border.width: 1
+
+                                Text {
+                                    id: recentTagText
+                                    anchors.centerIn: parent
+                                    text: "Recent"
+                                    color: root.accentColor
+                                    font.pixelSize: 11
+                                    font.bold: true
                                 }
                             }
                         }
@@ -329,7 +376,7 @@ Scope {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onEntered: list.currentIndex = index
-                            onClicked: root.launch(modelData)
+                            onClicked: root.launch(delegateRoot.modelData)
                         }
                     }
 

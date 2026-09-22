@@ -6,6 +6,7 @@ import "modules/wallpaper"
 import "modules/applauncher"
 import "modules/notifications"
 import "modules/workspace"
+import "modules/SearchFiles"
 
 ShellRoot {
     readonly property var _wallpaperInit: Wallpaper.currentPath
@@ -15,4 +16,5 @@ ShellRoot {
     Bar {}
     AppLauncher {}
     Notifications {}
+    SearchFiles {}
 }

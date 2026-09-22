@@ -6,8 +6,6 @@
 	git push
 
 #WORKSPACE
-win+tab = next workspace
-alt+tab = next workspace
 win+arrowKeys = change focus
 win+scroll up/down = next/prev workspace
 win+{1...10} = nth workspace
@@ -16,7 +14,10 @@ win+{1...10} = nth workspace
 alt+f4 = shut down
 win+print = screenshot + save
 win+shift+print = partial screenshot + save
+win+shift+c = colorpicker
 ctrl+print = partial screenshot + copy - save
+ctrl+shit+print = OCR
+ctrl+shift+space = Spotlight search 
 win+x = see TO-Do & SHORTCUTS
 
 #MOUNT

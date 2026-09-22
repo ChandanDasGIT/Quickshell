@@ -1,10 +1,16 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick.Controls
 
 Row {
     spacing: 10
+
+    Process {
+        id: merkuroProc
+        command: ["merkuro-calendar"]
+    }
 
     Text {
         id: clock
@@ -32,6 +38,11 @@ Row {
             hoverEnabled: true
             onEntered: calendarPopup.visible = true
             onExited: calendarPopup.visible = false
+
+            onClicked: {
+                calendarPopup.visible = false
+                merkuroProc.running = true
+            }
         }
     }
 
