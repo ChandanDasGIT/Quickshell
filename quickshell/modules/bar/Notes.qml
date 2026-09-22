@@ -250,6 +250,20 @@ Item {
         }
         exclusiveZone: 0
 
+        // Close on Escape key
+        Shortcut {
+            sequence: "Escape"
+            enabled: root.notesVisible
+            context: Qt.WindowShortcut
+            onActivated: root.toggle()
+        }
+
+        // Backdrop: clicks outside the panel trigger close & auto-save
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.toggle()
+        }
+
         Rectangle {
             id: panel
             anchors.centerIn: parent
@@ -259,6 +273,13 @@ Item {
             radius: 12
             border.color: "#2a2a2a"
             border.width: 1
+
+            // Prevent clicks inside the panel from propagating to the backdrop
+            MouseArea {
+                anchors.fill: parent
+                // Empty handler consumes clicks inside the panel
+                onClicked: {}
+            }
 
             RowLayout {
                 anchors.fill: parent

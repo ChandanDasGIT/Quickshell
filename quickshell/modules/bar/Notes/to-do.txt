@@ -1,7 +1,7 @@
 // chapter 8 needs to be done //
 // start chapter 9 //
 
-//close the notes pop up if click outside
+//need to set default apps for searchbar.qml
 
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)

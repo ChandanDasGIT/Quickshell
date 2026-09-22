@@ -28,6 +28,14 @@ sudo dnf downgrade ~/rpm-backups/quickshell-0.3.1-2.fc44.x86_64.rpm
             pipewire wireplumber upower \
             cava playerctl pavucontrol jq fd-find fzf xdg-utils merkuro
 
+#Quickshell shortcuts for hyprland.lua
+    --QUICKSHELL bindings
+        hl.bind(mainMod .. " + TAB", hl.dsp.exec_cmd("qs ipc call dock toggle"))
+        hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd("qs ipc call applauncher toggle"))
+        hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notifications toggle"))
+        hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call workspaces toggle"))
+        hl.bind(ctrlMod .. " + SHIFT + Space", hl.dsp.exec_cmd("quickshell ipc call fileSearch toggle"))
+
 
 Future:
 

@@ -1,2 +1,5 @@
 singleton WorkspacePicker 1.0 WorkspacePicker.qml
 singleton WorkspaceSwap 1.0 WorkspaceSwap.qml
+WorkspaceDock 1.0 WorkspaceDock.qml
+WorkspaceWindowShelf 1.0 WorkspaceWindowShelf.qml
+WorkspaceGridCell 1.0 WorkspaceGridCell.qml
