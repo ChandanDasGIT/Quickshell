@@ -1,6 +1,7 @@
 # Directories are always included automatically
 
 lua
+qml
 
 # Microsoft Office & Documents
 doc
