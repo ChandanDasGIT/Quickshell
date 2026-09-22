@@ -1,0 +1,8 @@
+singleton Theme 1.0 Theme.qml
+Bar 1.0 Bar.qml
+LeftSection 1.0 LeftSection.qml
+CenterSection 1.0 CenterSection.qml
+RightSection 1.0 RightSection.qml
+NetSpeedMeter 1.0 NetSpeedMeter.qml
+Tray 1.0 Tray.qml
+Notes 1.0 Notes.qml

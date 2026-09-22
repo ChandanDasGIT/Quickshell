@@ -7,7 +7,7 @@
 
 //create theme.qml for quickshell
 
-//bar icons are not aligned
+//need animation for workspaceSwap.qml
 
 //why is copying something doesn't paste if i close the window that i copied from
 

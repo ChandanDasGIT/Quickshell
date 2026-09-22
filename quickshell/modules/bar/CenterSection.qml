@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick.Controls
+import "."
 
 Row {
     spacing: 10
@@ -14,7 +15,7 @@ Row {
 
     Text {
         id: clock
-        color: "#ffffff"
+        color: Theme.iconColor
         font.bold: true
         font.pixelSize: 13
 

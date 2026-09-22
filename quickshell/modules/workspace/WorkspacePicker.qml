@@ -23,6 +23,18 @@ Item {
     property int currentTargetIndex: -1
     property bool shiftHeld: false
 
+    // --- animation state ---
+    property bool windowVisible: false
+    property real slideOffset: 140
+    readonly property int slideDuration: 200
+
+    Behavior on slideOffset {
+        NumberAnimation {
+            duration: root.slideDuration
+            easing.type: root.slideOffset === 0 ? Easing.OutQuint : Easing.InQuad
+        }
+    }
+
     readonly property var activeWorkspaceList: {
         var toplevels = Hyprland.toplevels.values;
         var map = {};
@@ -44,17 +56,33 @@ Item {
     }
 
     function toggle() {
-        pickerVisible = !pickerVisible
-        if (pickerVisible) {
-            selectedWorkspaces = []
-            isDragging = false
-            currentTargetIndex = -1
-            hoveredWs = -1
-            inspectedWs = -1
-            shiftHeld = false
-            refreshState()
-        }
+        if (pickerVisible) close()
+            else open()
     }
+
+    function open() {
+        pickerVisible = true
+        windowVisible = true
+        selectedWorkspaces = []
+        isDragging = false
+        currentTargetIndex = -1
+        hoveredWs = -1
+        inspectedWs = -1
+        shiftHeld = false
+        slideOffset = 140
+        refreshState()
+        openAnimTimer.start()
+    }
+
+    function close() {
+        if (!pickerVisible) return
+            pickerVisible = false
+            slideOffset = 140
+            closeAnimTimer.restart()
+    }
+
+    Timer { id: openAnimTimer; interval: 20; onTriggered: root.slideOffset = 0 }
+    Timer { id: closeAnimTimer; interval: root.slideDuration; onTriggered: root.windowVisible = false }
 
     IpcHandler {
         target: "workspaces"
@@ -151,7 +179,7 @@ Item {
             }
             root.hoveredWs = -1
             root.inspectedWs = -1
-            root.pickerVisible = false
+            root.hoveredWs = -1
     }
 
     function killWindow(w) {
@@ -245,7 +273,7 @@ Item {
 
     PanelWindow {
         id: popup
-        visible: root.pickerVisible
+        visible: root.windowVisible
         color: "transparent"
 
         WlrLayershell.layer: WlrLayer.Overlay
@@ -280,7 +308,7 @@ Item {
                     root.pick(10)
                     event.accepted = true
                 } else if (event.key === Qt.Key_Escape) {
-                    root.pickerVisible = false
+                    root.close()
                     event.accepted = true
                 }
             }
@@ -305,176 +333,184 @@ Item {
 
                             root.inspectedWs = -1
                             root.selectedWorkspaces = []
-                            root.pickerVisible = false
+                            root.close()
             }
         }
 
-        WorkspaceDock {
-            id: dock
-            anchors.bottom: container.top
-            anchors.bottomMargin: 14
-            anchors.horizontalCenter: container.horizontalCenter
-            width: container.width
-
-            parentWindow: popup
-            activeWorkspaceList: root.activeWorkspaceList
-            activeWorkspace: root.activeWorkspace
-            isDragging: root.isDragging
-
-            onPick: (id) => root.pick(id)
-            onFocusWindow: (w) => root.focusWindow(w)
-            onKillWindow: (w) => root.killWindow(w)
-        }
-
-        WorkspaceWindowShelf {
-            id: shelf
-            anchors.top: container.bottom
-            anchors.topMargin: 14
-            anchors.horizontalCenter: container.horizontalCenter
-            width: container.width
-
-            targetWs: root.hoveredWs !== -1 ? root.hoveredWs : root.inspectedWs
-            windowModel: root.getWindowsForWorkspace(targetWs)
-            isDragging: root.isDragging
-
-            onFocusWindow: (w) => root.focusWindow(w)
-            onKillWindow: (w) => root.killWindow(w)
-        }
-
-        Rectangle {
-            id: container
+        Item {
+            id: popupContent
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: -parent.height * 0.05
+            anchors.verticalCenterOffset: -parent.height * 0.05 + root.slideOffset
+            width: container.width
+            height: container.height
+            opacity: 1 - Math.min(1, root.slideOffset / 140)
 
-            width: Math.max(grid.implicitWidth, headerText.implicitWidth) + 64
-            height: layout.implicitHeight + 48
-            color: "#0d0d0d"
-            radius: 16
-            border.color: "#2a2a2a"
-            border.width: 1
+            WorkspaceDock {
+                id: dock
+                anchors.bottom: container.top
+                anchors.bottomMargin: 14
+                anchors.horizontalCenter: container.horizontalCenter
+                width: container.width
 
-            ColumnLayout {
-                id: layout
+                parentWindow: popup
+                activeWorkspaceList: root.activeWorkspaceList
+                activeWorkspace: root.activeWorkspace
+                isDragging: root.isDragging
+
+                onPick: (id) => root.pick(id)
+                onFocusWindow: (w) => root.focusWindow(w)
+                onKillWindow: (w) => root.killWindow(w)
+            }
+
+            WorkspaceWindowShelf {
+                id: shelf
+                anchors.top: container.bottom
+                anchors.topMargin: 14
+                anchors.horizontalCenter: container.horizontalCenter
+                width: container.width
+
+                targetWs: root.hoveredWs !== -1 ? root.hoveredWs : root.inspectedWs
+                windowModel: root.getWindowsForWorkspace(targetWs)
+                isDragging: root.isDragging
+
+                onFocusWindow: (w) => root.focusWindow(w)
+                onKillWindow: (w) => root.killWindow(w)
+            }
+
+            Rectangle {
+                id: container
                 anchors.centerIn: parent
-                spacing: 18
-                width: parent.width - 48
 
-                Text {
-                    id: headerText
-                    text: root.selectedWorkspaces.length > 0
-                    ? "DRAGGING " + root.selectedWorkspaces.length + " WORKSPACES (" + [...root.selectedWorkspaces].sort((a,b)=>a-b).join(", ") + ")"
-                    : "CLICK TO SELECT · DOUBLE-CLICK TO SWITCH\nSHIFT+CLICK TO MULTI-SELECT · DRAG TO SWAP"
-                    color: root.selectedWorkspaces.length > 0 ? "#4dabf7" : "#888888"
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 11
-                    font.letterSpacing: 0.5
-                    lineHeight: 1.35
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignHCenter
-                }
+                width: Math.max(grid.implicitWidth, headerText.implicitWidth) + 64
+                height: layout.implicitHeight + 48
+                color: "#0d0d0d"
+                radius: 16
+                border.color: "#2a2a2a"
+                border.width: 1
 
-                GridLayout {
-                    id: grid
-                    columns: 5
-                    rowSpacing: 12
-                    columnSpacing: 12
-                    Layout.alignment: Qt.AlignHCenter
+                ColumnLayout {
+                    id: layout
+                    anchors.centerIn: parent
+                    spacing: 18
+                    width: parent.width - 48
 
-                    Repeater {
-                        model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                    Text {
+                        id: headerText
+                        text: root.selectedWorkspaces.length > 0
+                        ? "DRAGGING " + root.selectedWorkspaces.length + " WORKSPACES (" + [...root.selectedWorkspaces].sort((a,b)=>a-b).join(", ") + ")"
+                        : "CLICK TO SELECT · DOUBLE-CLICK TO SWITCH\nSHIFT+CLICK TO MULTI-SELECT · DRAG TO SWAP"
+                        color: root.selectedWorkspaces.length > 0 ? "#4dabf7" : "#888888"
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 11
+                        font.letterSpacing: 0.5
+                        lineHeight: 1.35
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                    }
 
-                        WorkspaceGridCell {
-                            Layout.preferredWidth: 72
-                            Layout.preferredHeight: 72
+                    GridLayout {
+                        id: grid
+                        columns: 5
+                        rowSpacing: 12
+                        columnSpacing: 12
+                        Layout.alignment: Qt.AlignHCenter
 
-                            cellIndex: modelData - 1
+                        Repeater {
+                            model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-                            containerItem: container
-                            dragProxyItem: dragProxy
-                            activeSources: root.activeSources
+                            WorkspaceGridCell {
+                                Layout.preferredWidth: 72
+                                Layout.preferredHeight: 72
 
-                            isSelected: root.selectedWorkspaces.includes(modelData)
-                            isInspected: root.inspectedWs === modelData
-                            hasWindows: root.occupiedWorkspaces.includes(modelData)
-                            isCurrentActive: root.activeWorkspace === modelData
-                            incomingWs: {
-                                if (!root.isDragging || root.currentTargetIndex < 0) return -1
-                                    let offset = (cellIndex - root.currentTargetIndex + 10) % 10
-                                    return offset < root.activeSources.length ? root.activeSources[offset] : -1
-                            }
+                                cellIndex: modelData - 1
 
-                            onTargetHovered: (id) => root.hoveredWs = id
-                            onTargetUnhovered: (id) => { if (root.hoveredWs === id) root.hoveredWs = -1 }
-                            onPick: (id) => root.pick(id)
-                            onKill: (id) => root.killWorkspace(id)
-                            onToggleSelection: (id) => root.toggleSelection(id)
-                            onToggleInspect: (id) => root.inspectedWs = (root.inspectedWs === id) ? -1 : id
-                            onSwapTriggered: (sources, target) => root.swapMultiple(sources, target)
+                                containerItem: container
+                                dragProxyItem: dragProxy
+                                activeSources: root.activeSources
 
-                            onDragEntered: (idx) => root.currentTargetIndex = idx
-                            onDragExited: (idx) => { if (root.currentTargetIndex === idx) root.currentTargetIndex = -1 }
+                                isSelected: root.selectedWorkspaces.includes(modelData)
+                                isInspected: root.inspectedWs === modelData
+                                hasWindows: root.occupiedWorkspaces.includes(modelData)
+                                isCurrentActive: root.activeWorkspace === modelData
+                                incomingWs: {
+                                    if (!root.isDragging || root.currentTargetIndex < 0) return -1
+                                        let offset = (cellIndex - root.currentTargetIndex + 10) % 10
+                                        return offset < root.activeSources.length ? root.activeSources[offset] : -1
+                                }
 
-                            onDragStarted: (sources, anchor) => {
-                                root.anchorWs = anchor
-                                let list = sources ? sources : [...root.selectedWorkspaces]
-                                // Keep this sorted so the incoming-ws preview shown while
-                                // dragging matches the order swapMultiple() actually uses.
-                                root.activeSources = [...list].sort((a, b) => a - b)
-                                root.isDragging = true
-                            }
+                                onTargetHovered: (id) => root.hoveredWs = id
+                                onTargetUnhovered: (id) => { if (root.hoveredWs === id) root.hoveredWs = -1 }
+                                onPick: (id) => root.pick(id)
+                                onKill: (id) => root.killWorkspace(id)
+                                onToggleSelection: (id) => root.toggleSelection(id)
+                                onToggleInspect: (id) => root.inspectedWs = (root.inspectedWs === id) ? -1 : id
+                                onSwapTriggered: (sources, target) => root.swapMultiple(sources, target)
 
-                            onDragEnded: {
-                                root.isDragging = false
-                                root.currentTargetIndex = -1
-                                dragProxy.x = -9999
-                                dragProxy.y = -9999
+                                onDragEntered: (idx) => root.currentTargetIndex = idx
+                                onDragExited: (idx) => { if (root.currentTargetIndex === idx) root.currentTargetIndex = -1 }
+
+                                onDragStarted: (sources, anchor) => {
+                                    root.anchorWs = anchor
+                                    let list = sources ? sources : [...root.selectedWorkspaces]
+                                    // Keep this sorted so the incoming-ws preview shown while
+                                    // dragging matches the order swapMultiple() actually uses.
+                                    root.activeSources = [...list].sort((a, b) => a - b)
+                                    root.isDragging = true
+                                }
+
+                                onDragEnded: {
+                                    root.isDragging = false
+                                    root.currentTargetIndex = -1
+                                    dragProxy.x = -9999
+                                    dragProxy.y = -9999
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Item {
-                id: dragProxy
-                x: -9999
-                y: -9999
-                width: proxyRow.implicitWidth
-                height: proxyRow.implicitHeight
-                z: 999
-                visible: root.isDragging
+                Item {
+                    id: dragProxy
+                    x: -9999
+                    y: -9999
+                    width: proxyRow.implicitWidth
+                    height: proxyRow.implicitHeight
+                    z: 999
+                    visible: root.isDragging
 
-                Drag.active: root.isDragging
-                Drag.source: dragProxy
-                Drag.keys: ["workspace"]
-                Drag.hotSpot.x: 0
-                Drag.hotSpot.y: height
+                    Drag.active: root.isDragging
+                    Drag.source: dragProxy
+                    Drag.keys: ["workspace"]
+                    Drag.hotSpot.x: 0
+                    Drag.hotSpot.y: height
 
-                Row {
-                    id: proxyRow
-                    spacing: 8
+                    Row {
+                        id: proxyRow
+                        spacing: 8
 
-                    Repeater {
-                        model: root.activeSources
+                        Repeater {
+                            model: root.activeSources
 
-                        Rectangle {
-                            width: 60
-                            height: 60
-                            radius: 10
-                            color: "#1c4f82"
-                            opacity: 0.3
-                            border.color: "#4dabf7"
-                            border.width: 1.5
+                            Rectangle {
+                                width: 60
+                                height: 60
+                                radius: 10
+                                color: "#1c4f82"
+                                opacity: 0.3
+                                border.color: "#4dabf7"
+                                border.width: 1.5
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData === 10 ? "0" : modelData
-                                color: "white"
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 18
-                                font.bold: true
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData === 10 ? "0" : modelData
+                                    color: "white"
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                }
                             }
                         }
                     }

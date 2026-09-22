@@ -15,16 +15,6 @@ RowLayout {
 
     readonly property string nerdFontFamily: "JetBrainsMono Nerd Font"
 
-    // Palette matched to the Catppuccin theme in Dock.qml
-    QtObject {
-        id: theme
-        readonly property color background: "#181825"
-        readonly property color windowSurface: "#1e1e2e"
-        readonly property color accent: "#89b4fa"
-        readonly property color border: "#313244"
-        readonly property color text: "#cdd6f4"
-        readonly property color subtext: "#a6adc8"
-    }
 
     // ---- Workspace Window Screencopy Preview Popup ----
     component WorkspaceLivePreview: PopupWindow {
@@ -50,8 +40,8 @@ RowLayout {
         Rectangle {
             anchors.fill: parent
             radius: 12
-            color: theme.background
-            border.color: theme.border
+            color: Theme.background
+            border.color: Theme.border
             border.width: 1
             clip: true
 
@@ -74,8 +64,8 @@ RowLayout {
                         width: 200
                         height: 145
                         radius: 8
-                        color: theme.windowSurface
-                        border.color: modelData.activated ? theme.accent : "transparent"
+                        color: Theme.windowSurface
+                        border.color: modelData.activated ? Theme.accent : "transparent"
                         border.width: 1
                         clip: true
 
@@ -98,7 +88,7 @@ RowLayout {
                                 id: titleText
                                 width: parent.width
                                 text: modelData.title || "Window"
-                                color: theme.text
+                                color: Theme.text
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
                                 horizontalAlignment: Text.AlignHCenter
@@ -134,7 +124,7 @@ RowLayout {
             Layout.alignment: Qt.AlignVCenter
 
             text: workspaceBar.focusedWorkspaceId
-            color: "#ffffff"
+            color: Theme.iconColor
 
             font.family: root.nerdFontFamily
             font.bold: true
@@ -162,7 +152,7 @@ RowLayout {
                 Text {
                     anchors.centerIn: parent
                     text: workspaceBar.showWorkspaceIcons ? "\u276e" : "\u276f"
-                    color: "#ffffff"
+                    color: Theme.iconColor
                     font.family: root.nerdFontFamily
                     font.pixelSize: 20
                 }
@@ -223,8 +213,9 @@ RowLayout {
                                     }
                                     return icons[wsDelegate.modelData.id] || "$"
                                 }
-                                color: "#ffffff"
-                                font.pixelSize: 20
+                                color: Theme.iconColor
+                                font.family: root.nerdFontFamily
+                                font.pixelSize: 16
                             }
 
                             // Active/occupied underline indicator
@@ -278,7 +269,7 @@ RowLayout {
 
         visible: playerOutput !== ""
         text: playerOutput
-        color: "#ffffff"
+        color: Theme.iconColor
         font.pixelSize: 16
         elide: Text.ElideRight
         Layout.preferredWidth: Math.min(implicitWidth, 200)
@@ -360,13 +351,15 @@ RowLayout {
             Layout.preferredHeight: 24
             Layout.alignment: Qt.AlignVCenter
 
-            color: "#ffffff"
-            font.pixelSize: 20
+            color: Theme.iconColor
+            font.family: root.nerdFontFamily
+            font.pixelSize: 16
+            font.letterSpacing: 3
             horizontalAlignment: Text.AlignLeft
             verticalAlignment: Text.AlignVCenter
             text: cavaOutput + " "
 
-            property string cavaOutput: "⣀⣀⣀⣀⣀⣀⣀⣀"
+            property string cavaOutput: "⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀"
 
             Process {
                 id: cavaProc

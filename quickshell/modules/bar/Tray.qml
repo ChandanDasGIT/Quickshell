@@ -11,7 +11,7 @@ Rectangle {
     id: trayContainer
 
     implicitWidth: trayRow.implicitWidth + 16
-    implicitHeight: 32
+    implicitHeight: 24
 
     color: "#0f000000"
     radius: 8

@@ -43,14 +43,14 @@ Item {
             Text {
                 text: seg.icon
                 visible: seg.icon.length > 0
-                color: "white"
+                color: Theme.iconColor
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: seg.iconSize
             }
             Text {
                 text: seg.label
                 visible: seg.label.length > 0
-                color: "white"
+                color: Theme.iconColor
                 font.pixelSize: 16
             }
         }
@@ -131,7 +131,7 @@ Item {
                 text: "\uf0ca"
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 14
-                color: "white"
+                color: Theme.iconColor
             }
 
             MouseArea {

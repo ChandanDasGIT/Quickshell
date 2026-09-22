@@ -103,8 +103,8 @@ Item {
             }
             Text {
                 text: root.formatSpeed(root.rxSpeed)
-                color: "#cdd6f4"
-                font.pixelSize: 12
+                color: Theme.iconColor
+                font.pixelSize: 16
                 font.family: "JetBrains Mono, monospace"
             }
         }
@@ -119,8 +119,8 @@ Item {
             }
             Text {
                 text: root.formatSpeed(root.txSpeed)
-                color: "#cdd6f4"
-                font.pixelSize: 12
+                color: Theme.iconColor
+                font.pixelSize: 16
                 font.family: "JetBrains Mono, monospace"
             }
         }
