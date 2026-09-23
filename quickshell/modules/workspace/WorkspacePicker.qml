@@ -7,7 +7,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
 
-Item {
+Singleton {
     id: root
 
     property bool pickerVisible: false
@@ -167,6 +167,7 @@ Item {
             switchProc.command = ["bash", "-c", cmd]
                 switchProc.running = true
                     refreshTimer.start()
+                    root.close()
     }
 
     function focusWindow(w) {
@@ -179,7 +180,7 @@ Item {
             }
             root.hoveredWs = -1
             root.inspectedWs = -1
-            root.hoveredWs = -1
+            root.close()
     }
 
     function killWindow(w) {
@@ -216,8 +217,6 @@ Item {
                     return
             }
 
-            // Map each dragged source to its target slot: a consecutive block
-            // of workspaces (wrapping at 10) starting at the one dropped on.
             let dest = {}
             let targets = []
             for (let i = 0; i < srcList.length; i++) {
@@ -226,11 +225,6 @@ Item {
                 dest[srcList[i]] = dst
             }
 
-            // dest is a bijection sources -> targets. If a target isn't itself
-            // one of the sources, whatever's currently on it still needs a
-            // home so nothing gets overwritten/merged away: pair the "extra"
-            // targets with the "extra" sources (in order) to close this into
-            // a full permutation over the whole affected set.
             let srcSet = new Set(srcList)
             let targetSet = new Set(targets)
             let extraTargets = targets.filter(t => !srcSet.has(t))
@@ -239,9 +233,6 @@ Item {
                 dest[extraTargets[i]] = extraSources[i]
             }
 
-            // Decompose the permutation into cycles. Rotating each cycle
-            // through a single temp workspace is a genuine swap: every
-            // workspace involved trades places, nothing is lost.
             let visited = {}
             let cycles = []
             let nodes = Object.keys(dest).map(Number)
@@ -277,11 +268,7 @@ Item {
         color: "transparent"
 
         WlrLayershell.layer: WlrLayer.Overlay
-        // On-demand focus (like the old focusable: true) rather than an
-        // Exclusive grab -- Exclusive mode appears to not feed modifier
-        // state into pointer/mouse events reliably on this setup, which is
-        // what was breaking shift+click detection.
-        WlrLayershell.keyboardFocus: root.pickerVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.pickerVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
 
         anchors { top: true; bottom: true; left: true; right: true }
@@ -455,8 +442,6 @@ Item {
                                 onDragStarted: (sources, anchor) => {
                                     root.anchorWs = anchor
                                     let list = sources ? sources : [...root.selectedWorkspaces]
-                                    // Keep this sorted so the incoming-ws preview shown while
-                                    // dragging matches the order swapMultiple() actually uses.
                                     root.activeSources = [...list].sort((a, b) => a - b)
                                     root.isDragging = true
                                 }
@@ -541,7 +526,7 @@ Item {
 
         Timer {
             id: triggerDelay
-            interval: 80 // Requires cursor to rest on edge for 80ms to prevent accidental triggers
+            interval: 80
             repeat: false
             onTriggered: {
                 if (!root.pickerVisible) {

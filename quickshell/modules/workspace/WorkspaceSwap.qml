@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-Item {
+Singleton {
     id: root
 
     readonly property string singleScript: [

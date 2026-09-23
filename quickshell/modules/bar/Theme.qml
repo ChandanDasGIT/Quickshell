@@ -1,7 +1,8 @@
 pragma Singleton
 import QtQuick
+import Quickshell
 
-QtObject {
+Singleton {
     // Icons & Typography
     readonly property color iconColor: "#ffffff"     // Pure White
     readonly property color textColor: "#ffffff"     // Pure White
