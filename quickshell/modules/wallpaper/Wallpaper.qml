@@ -143,8 +143,19 @@ Item {
         onTriggered: root.next()
     }
 
+    // Replace the hardcoded "All" on startup:
     Component.onCompleted: {
-        loadImagesForCategory("All");
+        let savedPath = cacheFile.text().trim();
+        let rel = savedPath.replace(root.wallpaperDir + "/", "");
+
+        // If the saved wallpaper belongs to a specific subfolder, reload that folder
+        if (rel.indexOf("/") !== -1) {
+            let cat = rel.split("/")[0];
+            activeCategory = cat;
+            loadImagesForCategory(cat);
+        } else {
+            loadImagesForCategory("All");
+        }
     }
 
     // Screen Renderers

@@ -1,20 +1,17 @@
 // chapter 8 needs to be done //
 // start chapter 9 //
 
-[[--Git update:
-	quickshell
+[[--
+    need two function:
+	1. scroll will scroll through the apps in WorkspaceSwap menu
+	2. i can drag an app to a workspace
+   
+    make an icon on the WorkspaceSwap menu to open a float window of showcasing every app installed
+	make it a bit bigger and shift it a bit downwards
+	add < > icons for switching left right workspace
 --]]
 
-//create theme.qml for quickshell
-
-//a way to drag and drop music files to be stacked on queue in tauon
-
-//need animation for workspaceSwap.qml
-
-//why is copying something doesn't paste if i close the window that i copied from
-
-//press esc or click outside to close pavucontroll window
-//same for power menu
+//disable cursor when typing
 
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)
@@ -23,10 +20,6 @@
 	4. monitor refresh rate.
 	5. seeing storage (remaining and total)
 -------------------------------
-//Quickshell :
-	2. make the icons have dynamic sizing and space control
-	
-3. learn: c++ & qt6 qml and python
 
 5. change shortcut update: auto system snapshot and if update makes something wrong it will auto revert to the snapshot
 
@@ -39,3 +32,10 @@
 		5. daw
 		6. cc tv app
 		7. ricing tool for hyprland
+-------------------------------
+c++ skills for music app:
+1. oops 
+2. Signals and Slots (Qt’s Event System)
+3. Smart Pointers (std::unique_ptr)
+4. Standard Containers (QList or std::vector)
+5. std::filesystem

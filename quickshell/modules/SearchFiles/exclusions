@@ -5,6 +5,14 @@ __pycache__/
 .local/share/Trash/
 .git/
 
+# Windows Files
+$RECYCLE.BIN
+$Recycle.Bin
+System Volume Information
+pagefile.sys
+hiberfil.sys
+dumpstack.log*
+
 # Heavy dot-directories in home (prune instantly)
 .cache/
 .cargo/
