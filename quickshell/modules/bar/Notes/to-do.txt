@@ -1,10 +1,22 @@
 // chapter 8 needs to be done //
-// start chapter 9 //
+// start chapter 9 - 01:00:42-01:31:31 [strchr ??]//
+// start chapter 12: classes : 38:00
+// contructures
+
+++12:00 call father
+
+//learn how to use jjazzlab
+
+1. after save, i still want undo and redo option.
+2. everytime i trigger a code collaps, it treats the document as if i have changed something
 
 [[--
     need two function:
 	1. scroll will scroll through the apps in WorkspaceSwap menu
 	2. i can drag an app to a workspace
+	3. when i take my mouse to corner, i get a keyboard icon pop up. if i click only then the full keyboard will open
+	
+	make expandable tray
    
     make an icon on the WorkspaceSwap menu to open a float window of showcasing every app installed
 	make it a bit bigger and shift it a bit downwards
