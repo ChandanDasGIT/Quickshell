@@ -105,6 +105,12 @@ Item {
 
         // ================= NetSpeedMeter =====================
         NetSpeedMeter{}
+        // ================= Virtual Keyboard toggle =====================
+        Segment {
+            icon: "\uf11c"   // keyboard glyph
+            tooltip: "Toggle Virtual Keyboard"
+            onClicked: Quickshell.execDetached(["qs", "ipc", "call", "virtualKeyboard", "toggle"])
+        }
         // ================= Workspace Swapper =====================
         Segment {
             icon: "\uf00a"   // grid-style glyph, swap for whatever you prefer
@@ -229,123 +235,7 @@ Item {
         }
 
 
-        // ================= group/hardware (drawer) ==================
-        Segment {
-            id: drawerToggle
-            icon: hwDrawer.open ? "\u276f" : "\u276e" // ❯ / ❮
-            iconSize: 20 // <-- INSERTED: Set the icon font size to 20 for this toggle arrow
-            onClicked: hwDrawer.open = !hwDrawer.open
-        }
-
-        Item {
-            id: hwDrawer
-            property bool open: false
-            clip: true
-            implicitHeight: 24
-            implicitWidth: open ? hwRow.implicitWidth : 0
-            Behavior on implicitWidth { NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-
-            RowLayout {
-                id: hwRow
-                spacing: 4
-
-
-
-                Segment {
-                    icon: "\uf2db"
-                    label: hwStats.cpuPercent + "%"
-                    tooltip: "CPU Usage %"
-                }
-                Segment {
-                    icon: "\uf0c9"
-                    label: hwStats.memPercent + "%"
-                    tooltip: "RAM Usage %"
-                }
-                // =================CPU temperature ===============================
-                QtObject {
-                    id: tempState
-                    property real celsius: 0
-                }
-
-                Timer {
-                    interval: 1000
-                    running: true
-                    repeat: true
-                    triggeredOnStart: true
-
-                    onTriggered: {
-                        if (!tempProc.running)
-                            tempProc.running = true
-                    }
-                }
-
-                Process {
-                    id: tempProc
-
-                    command: [
-                        "bash",
-                        "-c",
-                        "for d in /sys/class/hwmon/hwmon*; do if [ -f \"$d/name\" ] && grep -qE \"coretemp|k10temp|cpu_thermal\" \"$d/name\"; then cat \"$d/temp1_input\"; break; fi; done 2>/dev/null || echo 0"
-                    ]
-
-                    stdout: StdioCollector {
-                        onStreamFinished: {
-                            tempState.celsius = (parseInt(text.trim()) || 0) / 1000
-                        }
-                    }
-                }
-
-                Segment {
-                    icon: "\uf2c8"
-                    label: Math.round(tempState.celsius) + "\u00b0C"
-                    tooltip: "CPU Temp"
-                }
-
-            }
-        }
-
-        // cpu/mem polling, standing in for waybar's "cpu"/"memory" modules
-        QtObject {
-            id: hwStats
-            property int cpuPercent: 0
-            property int memPercent: 0
-            property var _prevIdle: 0
-            property var _prevTotal: 0
-        }
-        Timer {
-            interval: 2000
-            running: true
-            repeat: true
-            triggeredOnStart: true
-            onTriggered: { cpuProc.running = true; memProc.running = true }
-        }
-        Process {
-            id: cpuProc
-            command: ["cat", "/proc/stat"]
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    const fields = text.split("\n")[0].trim().split(/\s+/).slice(1).map(Number)
-                    const idle = fields[3] + fields[4]
-                    const total = fields.reduce((a, b) => a + b, 0)
-                    if (hwStats._prevTotal > 0) {
-                        const totalDiff = total - hwStats._prevTotal
-                        const idleDiff = idle - hwStats._prevIdle
-                        if (totalDiff > 0)
-                            hwStats.cpuPercent = Math.round(100 * (totalDiff - idleDiff) / totalDiff)
-                    }
-                    hwStats._prevIdle = idle
-                    hwStats._prevTotal = total
-                }
-            }
-        }
-        Process {
-            id: memProc
-            command: ["bash", "-c", "free | awk '/Mem:/ {printf \"%.0f\", $3/$2*100}'"]
-            stdout: StdioCollector {
-                onStreamFinished: hwStats.memPercent = parseInt(text) || 0
-            }
-        }
-
+        SysUtil {}
         // ================= tray =======================================
         Tray{}
 

@@ -11,6 +11,9 @@ Item {
 
     signal focusWindow(var window)
     signal killWindow(var window)
+    signal windowDragStarted(var window, string iconSource)
+    signal windowDragMoved(real px, real py)
+    signal windowDragFinished(bool dropped)
 
     height: listContainer.implicitHeight
     opacity: (!isDragging && targetWs !== -1 && windowModel.length > 0) ? 1.0 : 0.0
@@ -110,12 +113,41 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        preventStealing: true
+
+                        property real pressX: 0
+                        property real pressY: 0
+                        property bool wasDragged: false
+
+                        onPressed: (mouse) => {
+                            pressX = mouse.x
+                            pressY = mouse.y
+                            wasDragged = false
+                        }
+
+                        onPositionChanged: (mouse) => {
+                            if (!(mouse.buttons & Qt.LeftButton)) return
+                                if (!wasDragged) {
+                                    const dx = mouse.x - pressX
+                                    const dy = mouse.y - pressY
+                                    if (dx * dx + dy * dy < 36) return
+                                        wasDragged = true
+                                        root.windowDragStarted(listItem.modelData, listItem.resolveIconPath())
+                                }
+                                const pt = itemMouse.mapToItem(root.parent, mouse.x, mouse.y)
+                                root.windowDragMoved(pt.x, pt.y)
+                        }
+
+                        onReleased: { if (wasDragged) root.windowDragFinished(true) }
+                        onCanceled: { if (wasDragged) root.windowDragFinished(false) }
+
                         onClicked: (mouse) => {
-                            if (mouse.button === Qt.RightButton) {
-                                root.killWindow(listItem.modelData)
-                            } else {
-                                root.focusWindow(listItem.modelData)
-                            }
+                            if (wasDragged) return
+                                if (mouse.button === Qt.RightButton) {
+                                    root.killWindow(listItem.modelData)
+                                } else {
+                                    root.focusWindow(listItem.modelData)
+                                }
                         }
                     }
                 }

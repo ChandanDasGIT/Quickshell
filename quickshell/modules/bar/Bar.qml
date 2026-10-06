@@ -38,21 +38,38 @@ PanelWindow {
     }
 
     Item {
+        id: content
         anchors.fill: parent
         anchors.margins: 4
 
-        LeftSection {
+        readonly property int gap: 8
+        readonly property real sideWidth: Math.max(0, (width - centerSec.width) / 2 - gap)
+
+        SideScroller {
             anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            maxWidth: content.sideWidth
+
+            LeftSection {
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
 
         CenterSection {
+            id: centerSec
             anchors.centerIn: parent
         }
 
-        RightSection {
+        SideScroller {
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            maxWidth: content.sideWidth
+
+            RightSection {
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
     }
 }

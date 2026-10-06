@@ -126,12 +126,21 @@ PanelWindow {
 
                     Item { Layout.fillWidth: true }
 
-                    Text {
-                        text: "✕"
-                        font.pixelSize: 13
-                        font.bold: true
-                        color: closeMouse.containsMouse ? "#ff5555" : "#77ffffff"
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.fillHeight: true
                         Layout.alignment: Qt.AlignVCenter
+                        radius: 4
+                        color: closeMouse.pressed ? "#55ff5555"
+                        : closeMouse.containsMouse ? "#33ff5555" : "transparent"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            font.pixelSize: 13
+                            font.bold: true
+                            color: closeMouse.containsMouse ? "#ff5555" : "#77ffffff"
+                        }
 
                         MouseArea {
                             id: closeMouse

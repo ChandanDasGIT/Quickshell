@@ -31,6 +31,9 @@ Item {
     signal dragStarted(var sources, int anchorWs)
     signal dragEnded()
 
+    signal windowDropped(int wsNumber)
+    readonly property bool windowHover: windowDrop.containsDrag
+
     function isShiftActive(mouse) {
         return (mouse.modifiers & Qt.ShiftModifier) !== 0
     }
@@ -46,6 +49,12 @@ Item {
             }
         }
     }
+    DropArea {
+        id: windowDrop
+        anchors.fill: parent
+        keys: ["window"]
+        onDropped: root.windowDropped(root.wsNumber)
+    }
 
     Rectangle {
         id: baseSlot
@@ -57,14 +66,14 @@ Item {
         : (root.isInspected ? "#1e2836" : (wsMouse.containsMouse ? "#262626" : "#171717"))
         border.color: root.isSelected
         ? "#339af0"
-        : (root.isInspected ? "#5c7cfa" : (root.incomingWs !== -1 ? "#4dabf7" : "#2a2a2a"))
-        border.width: root.isSelected || root.incomingWs !== -1 || root.isInspected ? 2 : 1
+        : (root.isInspected ? "#5c7cfa" : ((root.incomingWs !== -1 || root.windowHover) ? "#4dabf7" : "#2a2a2a"))
+        border.width: root.isSelected || root.incomingWs !== -1 || root.isInspected || root.windowHover ? 2 : 1
 
         Rectangle {
             anchors.fill: parent
             radius: 12
             color: "#228be6"
-            opacity: root.incomingWs !== -1 ? 0.22 : 0.0
+            opacity: (root.incomingWs !== -1 || root.windowHover) ? 0.22 : 0.0
             Behavior on opacity { NumberAnimation { duration: 120 } }
         }
 

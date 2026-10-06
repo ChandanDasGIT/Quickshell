@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
+import Quickshell.Widgets
 
 Singleton {
     id: root
@@ -16,6 +17,8 @@ Singleton {
     property int activeWorkspace: -1
     property int hoveredWs: -1
     property int inspectedWs: -1
+    property var draggedWindow: null
+    property string draggedIcon: ""
 
     property bool isDragging: false
     property var activeSources: []
@@ -65,6 +68,7 @@ Singleton {
         windowVisible = true
         selectedWorkspaces = []
         isDragging = false
+        draggedWindow = null
         currentTargetIndex = -1
         hoveredWs = -1
         inspectedWs = -1
@@ -192,6 +196,17 @@ Singleton {
                 Hyprland.dispatch('closewindow address:' + fullAddr)
             }
             refreshTimer.start()
+    }
+    function moveWindowToWorkspace(w, ws) {
+        if (!w) return
+            if (w.workspace && w.workspace.id === ws) return
+                var fullAddr = "0x" + String(w.address).replace(/^0x/, "")
+                if (Hyprland.usingLua) {
+                    Hyprland.dispatch('hl.dsp.window.move({ workspace = "' + ws + '", window = "address:' + fullAddr + '" })')
+                } else {
+                    Hyprland.dispatch('movetoworkspacesilent ' + ws + ',address:' + fullAddr)
+                }
+                refreshTimer.start()
     }
 
     function killWorkspace(n) {
@@ -328,7 +343,7 @@ Singleton {
             id: popupContent
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: -parent.height * 0.05 + root.slideOffset
+            anchors.verticalCenterOffset: parent.height * 0.15 + root.slideOffset
             width: container.width
             height: container.height
             opacity: 1 - Math.min(1, root.slideOffset / 140)
@@ -336,7 +351,7 @@ Singleton {
             WorkspaceDock {
                 id: dock
                 anchors.bottom: container.top
-                anchors.bottomMargin: 14
+                anchors.bottomMargin: 0
                 anchors.horizontalCenter: container.horizontalCenter
                 width: container.width
 
@@ -348,6 +363,23 @@ Singleton {
                 onPick: (id) => root.pick(id)
                 onFocusWindow: (w) => root.focusWindow(w)
                 onKillWindow: (w) => root.killWindow(w)
+
+                windowDragging: root.draggedWindow !== null
+
+                onWindowDragStarted: (w, icon) => {
+                    root.draggedWindow = w
+                    root.draggedIcon = icon
+                }
+                onWindowDragMoved: (px, py) => {
+                    windowDragProxy.x = px - windowDragProxy.width / 2
+                    windowDragProxy.y = py - windowDragProxy.height / 2
+                }
+                onWindowDragFinished: (dropped) => {
+                    if (dropped) windowDragProxy.Drag.drop()
+                        root.draggedWindow = null
+                        windowDragProxy.x = -9999
+                        windowDragProxy.y = -9999
+                }
             }
 
             WorkspaceWindowShelf {
@@ -363,6 +395,21 @@ Singleton {
 
                 onFocusWindow: (w) => root.focusWindow(w)
                 onKillWindow: (w) => root.killWindow(w)
+
+                onWindowDragStarted: (w, icon) => {
+                    root.draggedWindow = w
+                    root.draggedIcon = icon
+                }
+                onWindowDragMoved: (px, py) => {
+                    windowDragProxy.x = px - windowDragProxy.width / 2
+                    windowDragProxy.y = py - windowDragProxy.height / 2
+                }
+                onWindowDragFinished: (dropped) => {
+                    if (dropped) windowDragProxy.Drag.drop()
+                        root.draggedWindow = null
+                        windowDragProxy.x = -9999
+                        windowDragProxy.y = -9999
+                }
             }
 
             Rectangle {
@@ -436,6 +483,8 @@ Singleton {
                                 onToggleInspect: (id) => root.inspectedWs = (root.inspectedWs === id) ? -1 : id
                                 onSwapTriggered: (sources, target) => root.swapMultiple(sources, target)
 
+                                onWindowDropped: (id) => root.moveWindowToWorkspace(root.draggedWindow, id)
+
                                 onDragEntered: (idx) => root.currentTargetIndex = idx
                                 onDragExited: (idx) => { if (root.currentTargetIndex === idx) root.currentTargetIndex = -1 }
 
@@ -498,6 +547,37 @@ Singleton {
                                 }
                             }
                         }
+                    }
+                }
+            }
+            Item {
+                id: windowDragProxy
+                x: -9999
+                y: -9999
+                width: 44
+                height: 44
+                z: 1000
+                visible: root.draggedWindow !== null
+
+                Drag.active: root.draggedWindow !== null
+                Drag.source: windowDragProxy
+                Drag.keys: ["window"]
+                Drag.hotSpot.x: width / 2
+                Drag.hotSpot.y: height / 2
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 10
+                    color: "#1c4f82"
+                    opacity: 0.85
+                    border.color: "#4dabf7"
+                    border.width: 1.5
+
+                    IconImage {
+                        anchors.centerIn: parent
+                        width: 28
+                        height: 28
+                        source: root.draggedIcon
                     }
                 }
             }

@@ -3,8 +3,6 @@
 // start chapter 12: classes : 38:00
 // contructures
 
-++12:00 call father
-
 //learn how to use jjazzlab
 
 1. after save, i still want undo and redo option.

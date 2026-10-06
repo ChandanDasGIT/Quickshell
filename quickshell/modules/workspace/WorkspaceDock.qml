@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Widgets
+import Quickshell.Wayland
 
 Rectangle {
     id: root
@@ -16,11 +17,16 @@ Rectangle {
     signal killWindow(var window)
     signal getWindows(int wsId, var callback)
 
+    property bool windowDragging: false
+    signal windowDragStarted(var window, string iconSource)
+    signal windowDragMoved(real px, real py)
+    signal windowDragFinished(bool dropped)
+
     function getWindowsForWorkspace(wsId) {
         if (wsId < 0) return []
-        return Hyprland.toplevels.values.filter(function(t) {
-            return t.wayland != null && t.workspace && t.workspace.id === wsId;
-        });
+            return Hyprland.toplevels.values.filter(function(t) {
+                return t.wayland != null && t.workspace && t.workspace.id === wsId;
+            });
     }
 
     visible: activeWorkspaceList.length > 0 && !isDragging
@@ -167,35 +173,75 @@ Rectangle {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        preventStealing: true
+
+                                        property real pressX: 0
+                                        property real pressY: 0
+                                        property bool wasDragged: false
 
                                         onEntered: dockIconBtn.hovered = true
                                         onExited: dockIconBtn.hovered = false
 
+                                        onPressed: (mouse) => {
+                                            pressX = mouse.x
+                                            pressY = mouse.y
+                                            wasDragged = false
+                                        }
+
+                                        onPositionChanged: (mouse) => {
+                                            if (!(mouse.buttons & Qt.LeftButton)) return
+                                                if (!wasDragged) {
+                                                    const dx = mouse.x - pressX
+                                                    const dy = mouse.y - pressY
+                                                    if (dx * dx + dy * dy < 36) return
+                                                        wasDragged = true
+                                                        root.windowDragStarted(dockIconBtn.modelData, dockIconBtn.resolveIconPath())
+                                                }
+                                                const pt = iconMouseArea.mapToItem(root.parent, mouse.x, mouse.y)
+                                                root.windowDragMoved(pt.x, pt.y)
+                                        }
+
+                                        onReleased: { if (wasDragged) root.windowDragFinished(true) }
+                                        onCanceled: { if (wasDragged) root.windowDragFinished(false) }
+
                                         onClicked: (mouse) => {
-                                            if (mouse.button === Qt.RightButton) {
-                                                root.killWindow(dockIconBtn.modelData)
-                                            } else {
-                                                root.focusWindow(dockIconBtn.modelData)
-                                            }
+                                            if (wasDragged) return
+                                                if (mouse.button === Qt.RightButton) {
+                                                    root.killWindow(dockIconBtn.modelData)
+                                                } else {
+                                                    root.focusWindow(dockIconBtn.modelData)
+                                                }
                                         }
                                     }
 
                                     PopupWindow {
-                                        visible: iconMouseArea.containsMouse && !root.isDragging
+                                        id: previewPopup
+                                        readonly property int previewW: 320      // preview width in px
+                                        readonly property int previewMaxH: 200   // preview max height in px
+
+                                        visible: iconMouseArea.containsMouse && !root.isDragging && !root.windowDragging
                                         color: "transparent"
                                         anchor {
                                             window: root.parentWindow
-                                            item: dockIconBtn
                                             edges: Edges.Top
                                             gravity: Edges.Top
-                                            margins.bottom: 6
+
+                                            onAnchoring: {
+                                                const content = root.parentWindow.contentItem
+                                                const icon = content.mapFromItem(dockIconBtn, 0, 0, dockIconBtn.width, dockIconBtn.height)
+                                                const dockTop = content.mapFromItem(root, 0, 0).y
+                                                previewPopup.anchor.rect.x = icon.x
+                                                previewPopup.anchor.rect.y = dockTop - 0
+                                                previewPopup.anchor.rect.width = icon.width
+                                                previewPopup.anchor.rect.height = 1
+                                            }
                                         }
-                                        implicitWidth: tooltipCol.implicitWidth + 14
-                                        implicitHeight: tooltipCol.implicitHeight + 8
+                                        implicitWidth: previewPopup.previewW + 20
+                                        implicitHeight: tooltipCol.implicitHeight + 20
 
                                         Rectangle {
                                             anchors.fill: parent
-                                            radius: 6
+                                            radius: 10
                                             color: "#181825"
                                             border.color: "#2a2a3a"
                                             border.width: 1
@@ -203,16 +249,38 @@ Rectangle {
                                             Column {
                                                 id: tooltipCol
                                                 anchors.centerIn: parent
-                                                spacing: 2
+                                                width: previewPopup.previewW
+                                                spacing: 6
+
+                                                Item {
+                                                    width: parent.width
+                                                    height: preview.hasContent ? preview.height : 0
+                                                    visible: preview.hasContent
+
+                                                    ScreencopyView {
+                                                        id: preview
+                                                        anchors.horizontalCenter: parent.horizontalCenter
+                                                        captureSource: dockIconBtn.modelData.wayland
+                                                        live: true
+                                                        constraintSize: Qt.size(previewPopup.previewW * 2, previewPopup.previewMaxH * 2)
+
+                                                        readonly property real aspect: implicitHeight > 0 ? implicitWidth / implicitHeight : 1.6
+                                                        height: Math.min(previewPopup.previewMaxH, previewPopup.previewW / aspect)
+                                                        width: height * aspect
+                                                    }
+                                                }
 
                                                 Text {
+                                                    width: parent.width
                                                     text: dockIconBtn.entry && dockIconBtn.entry.name ? dockIconBtn.entry.name : dockIconBtn.appId
                                                     color: "#89b4fa"
                                                     font.family: "JetBrainsMono Nerd Font"
                                                     font.pixelSize: 10
                                                     font.bold: true
+                                                    elide: Text.ElideRight
                                                 }
                                                 Text {
+                                                    width: parent.width
                                                     text: dockIconBtn.modelData.title || ""
                                                     color: "#cdd6f4"
                                                     font.family: "JetBrainsMono Nerd Font"

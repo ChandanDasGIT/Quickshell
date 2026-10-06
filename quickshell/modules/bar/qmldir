@@ -6,3 +6,5 @@ RightSection 1.0 RightSection.qml
 NetSpeedMeter 1.0 NetSpeedMeter.qml
 Tray 1.0 Tray.qml
 Notes 1.0 Notes.qml
+SideScroller SideScroller.qml
+SysUtil SysUtil.qml

@@ -20,5 +20,5 @@ ShellRoot {
     SearchFiles {}
     WallpaperSelector {}
     VirtualKeyboard {}
-    CornerTrigger {}
+    //CornerTrigger {}
 }
