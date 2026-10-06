@@ -42,34 +42,18 @@ PanelWindow {
         anchors.fill: parent
         anchors.margins: 4
 
-        readonly property int gap: 8
-        readonly property real sideWidth: Math.max(0, (width - centerSec.width) / 2 - gap)
-
-        SideScroller {
+        LeftSection {
             anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            maxWidth: content.sideWidth
-
-            LeftSection {
-                anchors.verticalCenter: parent.verticalCenter
-            }
+            anchors.verticalCenter: parent.verticalCenter
         }
 
         CenterSection {
-            id: centerSec
             anchors.centerIn: parent
         }
 
-        SideScroller {
+        RightSection {
             anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            maxWidth: content.sideWidth
-
-            RightSection {
-                anchors.verticalCenter: parent.verticalCenter
-            }
+            anchors.verticalCenter: parent.verticalCenter
         }
     }
 }
