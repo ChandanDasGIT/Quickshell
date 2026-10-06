@@ -8,18 +8,6 @@
 1. after save, i still want undo and redo option.
 2. everytime i trigger a code collaps, it treats the document as if i have changed something
 
-[[--
-    need two function:
-	1. scroll will scroll through the apps in WorkspaceSwap menu
-	2. i can drag an app to a workspace
-	3. when i take my mouse to corner, i get a keyboard icon pop up. if i click only then the full keyboard will open
-	
-	make expandable tray
-   
-    make an icon on the WorkspaceSwap menu to open a float window of showcasing every app installed
-	make it a bit bigger and shift it a bit downwards
-	add < > icons for switching left right workspace
---]]
 
 //disable cursor when typing
 

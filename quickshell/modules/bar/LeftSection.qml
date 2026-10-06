@@ -386,7 +386,7 @@ RowLayout {
                                 output += glyphs[value]
                         }
 
-                        while (output.length < 8) {
+                        while (output.length < 10) {
                             output += "⣀"
                         }
 

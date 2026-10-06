@@ -36,14 +36,23 @@ Rectangle {
     border.color: "#2a2a3a"
     border.width: 1
 
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
+            flick.contentX = Math.max(0, Math.min(flick.contentWidth - flick.width, flick.contentX - delta))
+        }
+    }
+
     Flickable {
+        id: flick
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 12
-        contentWidth: Math.max(width - 24, dockRow.implicitWidth)
+        contentWidth: Math.max(width, dockRow.implicitWidth)
         contentHeight: height
         clip: true
-        boundsBehavior: Flickable.DragOverBounds
+        boundsBehavior: Flickable.StopAtBounds
 
         Row {
             id: dockRow
@@ -252,21 +261,26 @@ Rectangle {
                                                 width: previewPopup.previewW
                                                 spacing: 6
 
-                                                Item {
+                                                Loader {
+                                                    active: previewPopup.visible
                                                     width: parent.width
-                                                    height: preview.hasContent ? preview.height : 0
-                                                    visible: preview.hasContent
+                                                    height: item ? item.height : 0
 
-                                                    ScreencopyView {
-                                                        id: preview
-                                                        anchors.horizontalCenter: parent.horizontalCenter
-                                                        captureSource: dockIconBtn.modelData.wayland
-                                                        live: true
-                                                        constraintSize: Qt.size(previewPopup.previewW * 2, previewPopup.previewMaxH * 2)
+                                                    sourceComponent: Item {
+                                                        height: preview.hasContent ? preview.height : 0
+                                                        visible: preview.hasContent
 
-                                                        readonly property real aspect: implicitHeight > 0 ? implicitWidth / implicitHeight : 1.6
-                                                        height: Math.min(previewPopup.previewMaxH, previewPopup.previewW / aspect)
-                                                        width: height * aspect
+                                                        ScreencopyView {
+                                                            id: preview
+                                                            anchors.horizontalCenter: parent.horizontalCenter
+                                                            captureSource: dockIconBtn.modelData.wayland
+                                                            live: true
+                                                            constraintSize: Qt.size(previewPopup.previewW * 2, previewPopup.previewMaxH * 2)
+
+                                                            readonly property real aspect: implicitHeight > 0 ? implicitWidth / implicitHeight : 1.6
+                                                            height: Math.min(previewPopup.previewMaxH, previewPopup.previewW / aspect)
+                                                            width: height * aspect
+                                                        }
                                                     }
                                                 }
 
