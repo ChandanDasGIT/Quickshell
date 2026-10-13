@@ -324,9 +324,6 @@ Singleton {
             anchors.fill: parent
             hoverEnabled: true
             onClicked: (mouse) => {
-                var ptDock = mapToItem(dock, mouse.x, mouse.y)
-                if (dock.visible && ptDock.x >= 0 && ptDock.x <= dock.width && ptDock.y >= 0 && ptDock.y <= dock.height) return
-
                     var ptCard = mapToItem(container, mouse.x, mouse.y)
                     if (ptCard.x >= 0 && ptCard.x <= container.width && ptCard.y >= 0 && ptCard.y <= container.height) return
 
@@ -348,50 +345,19 @@ Singleton {
             height: container.height
             opacity: 1 - Math.min(1, root.slideOffset / 140)
 
-            WorkspaceDock {
-                id: dock
-                anchors.bottom: container.top
-                anchors.bottomMargin: 0
-                anchors.horizontalCenter: container.horizontalCenter
-                width: container.width
 
-                parentWindow: popup
-                activeWorkspaceList: root.activeWorkspaceList
-                activeWorkspace: root.activeWorkspace
-                isDragging: root.isDragging
-
-                onPick: (id) => root.pick(id)
-                onFocusWindow: (w) => root.focusWindow(w)
-                onKillWindow: (w) => root.killWindow(w)
-
-                windowDragging: root.draggedWindow !== null
-
-                onWindowDragStarted: (w, icon) => {
-                    root.draggedWindow = w
-                    root.draggedIcon = icon
-                }
-                onWindowDragMoved: (px, py) => {
-                    windowDragProxy.x = px - windowDragProxy.width / 2
-                    windowDragProxy.y = py - windowDragProxy.height / 2
-                }
-                onWindowDragFinished: (dropped) => {
-                    if (dropped) windowDragProxy.Drag.drop()
-                        root.draggedWindow = null
-                        windowDragProxy.x = -9999
-                        windowDragProxy.y = -9999
-                }
-            }
 
             WorkspaceWindowShelf {
                 id: shelf
                 anchors.top: container.bottom
-                anchors.topMargin: 14
+                anchors.topMargin: 0
                 anchors.horizontalCenter: container.horizontalCenter
                 width: container.width
 
                 targetWs: root.hoveredWs !== -1 ? root.hoveredWs : root.inspectedWs
                 windowModel: root.getWindowsForWorkspace(targetWs)
                 isDragging: root.isDragging
+                maxHeight: Math.max(60, Math.min(210, (popupContent.parent.height - container.height) / 2 - 38))
 
                 onFocusWindow: (w) => root.focusWindow(w)
                 onKillWindow: (w) => root.killWindow(w)
@@ -448,16 +414,16 @@ Singleton {
                     GridLayout {
                         id: grid
                         columns: 5
-                        rowSpacing: 12
-                        columnSpacing: 12
+                        rowSpacing: 14
+                        columnSpacing: 14
                         Layout.alignment: Qt.AlignHCenter
 
                         Repeater {
                             model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
                             WorkspaceGridCell {
-                                Layout.preferredWidth: 72
-                                Layout.preferredHeight: 72
+                                Layout.preferredWidth: 88
+                                Layout.preferredHeight: 88
 
                                 cellIndex: modelData - 1
 
@@ -468,6 +434,7 @@ Singleton {
                                 isSelected: root.selectedWorkspaces.includes(modelData)
                                 isInspected: root.inspectedWs === modelData
                                 hasWindows: root.occupiedWorkspaces.includes(modelData)
+                                windows: root.getWindowsForWorkspace(modelData)
                                 isCurrentActive: root.activeWorkspace === modelData
                                 incomingWs: {
                                     if (!root.isDragging || root.currentTargetIndex < 0) return -1

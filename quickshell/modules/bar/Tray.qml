@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.SystemTray
 import Qt5Compat.GraphicalEffects
+import Quickshell.Hyprland
 
 Rectangle {
     id: trayContainer
@@ -19,24 +20,14 @@ Rectangle {
     ? "#33ffffff"
     : "#0f000000"
 
-    Grid {
+    Text {
         anchors.centerIn: parent
-        rows: 2
-        columns: 2
-        spacing: 2
+        text: "\u25BC"
+        font.pixelSize: 16
 
-        Repeater {
-            model: 4
-
-            Rectangle {
-                width: 5
-                height: 5
-                radius: 1.5
-                color: trayPopup.visible ? "#ffffff" : "#cfcfcf"
-
-                Behavior on color { ColorAnimation { duration: 120 } }
-            }
-        }
+        // Keeps the same color changing animation you originally had
+        color: trayPopup.visible ? "#ffffff" : "#cfcfcf"
+        Behavior on color { ColorAnimation { duration: 120 } }
     }
 
     MouseArea {
@@ -53,21 +44,45 @@ Rectangle {
         }
     }
 
+    // Hide tray items whose id/title/tooltip contains any of these (lowercase)
+    readonly property var hiddenPatterns: [
+        "nm-applet",
+        "blueman",
+        "bluetooth",
+        "xwaylandvideobridge",
+        "wayland to x"
+    ]
+
+    ScriptModel {
+        id: trayModel
+        values: SystemTray.items.values.filter(function(item) {
+            const hay = ((item.id || "") + " " + (item.title || "") + " "
+            + (item.tooltipTitle || "")).toLowerCase();
+            for (let i = 0; i < trayContainer.hiddenPatterns.length; i++) {
+                if (hay.indexOf(trayContainer.hiddenPatterns[i]) >= 0) return false;
+            }
+            return true;
+        })
+    }
+
     PopupWindow {
         id: trayPopup
 
-        width: 220
+        implicitWidth: 220
         height: listColumn.implicitHeight + 16
 
         color: "transparent"
         visible: false
         grabFocus: true
 
-        anchor.window: Quickshell.windowFor(trayContainer)
+        //anchor.window: Quickshell.windowFor(trayContainer)
         anchor.item: trayContainer
         anchor.edges: Edges.Bottom
         anchor.gravity: Edges.Bottom
-        onVisibleChanged: if (!visible) menuPopup.visible = false
+        onVisibleChanged: {
+            if (visible) Hyprland.refreshToplevels()
+                else menuPopup.visible = false
+        }
 
         Rectangle {
             anchors.fill: parent
@@ -88,7 +103,7 @@ Rectangle {
                 spacing: 2
 
                 Text {
-                    visible: SystemTray.items.values.length === 0
+                    visible: trayModel.values.length === 0
                     text: "No tray items"
                     color: "#777777"
                     font.pixelSize: 13
@@ -97,12 +112,63 @@ Rectangle {
                 }
 
                 Repeater {
-                    model: SystemTray.items
+                    model: trayModel
 
                     delegate: Rectangle {
                         id: row
 
                         required property var modelData
+
+                        // Each row keeps its own handle on the app's menu
+                        QsMenuOpener {
+                            id: rowMenu
+                            menu: row.modelData.hasMenu ? row.modelData.menu : null
+                        }
+
+                        // Trigger the menu's "Open/Show/Restore" entry; fall back to activate()
+                        function norm(s) { return (s || "").toLowerCase().replace(/[^a-z0-9]/g, "") }
+
+                        // Find an already-open window for this tray app
+                        function findWindow() {
+                            const keys = [row.modelData.id, row.modelData.title, row.modelData.tooltipTitle]
+                            .map(norm).filter(function(k) { return k.length >= 3 });
+                            const wins = Hyprland.toplevels.values;
+                            for (let i = 0; i < wins.length; i++) {
+                                const o = wins[i].lastIpcObject;
+                                if (!o) continue;
+                                const cls = norm(o.class);
+                                const init = norm(o.initialClass);
+                                for (let k = 0; k < keys.length; k++) {
+                                    if (!keys[k]) continue;
+                                    if ((cls && (cls.indexOf(keys[k]) >= 0 || keys[k].indexOf(cls) >= 0))
+                                        || (init && (init.indexOf(keys[k]) >= 0 || keys[k].indexOf(init) >= 0)))
+                                        return wins[i];
+                                }
+                            }
+                            return null;
+                        }
+
+                        function openApp() {
+                            const win = findWindow();
+                            if (win) {
+                                Hyprland.dispatch('hl.dsp.focus({ window = "address:0x' + win.address + '" })');
+                                return;
+                            }
+
+                            // No open window: trigger the menu's Open/Show entry, else activate()
+                            const entries = rowMenu.children ? rowMenu.children.values : [];
+                            for (let i = 0; i < entries.length; i++) {
+                                const e = entries[i];
+                                if (e.isSeparator || !e.enabled) continue;
+                                const t = (e.text || "").toLowerCase();
+                                if (/hide|close|quit|exit/.test(t)) continue;
+                                if (/open|show|restore/.test(t)) {
+                                    e.triggered();
+                                    return;
+                                }
+                            }
+                            row.modelData.activate();
+                        }
 
                         width: listColumn.width
                         height: 32
@@ -146,7 +212,7 @@ Rectangle {
                                         menuPopup.openFor(row.modelData.menu, p.y, row.height)
                                     }
                                 } else {
-                                    row.modelData.activate()
+                                    row.openApp()
                                     trayPopup.visible = false
                                 }
                             }

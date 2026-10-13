@@ -13,12 +13,11 @@ ShellRoot {
     readonly property var _wallpaperInit: Wallpaper.currentPath
     readonly property var _wsPickerInit: WorkspacePicker.pickerVisible
 
-    Dock {}
+    //Dock {}
     Bar {}
     AppLauncher {}
     Notifications {}
     SearchFiles {}
     WallpaperSelector {}
     VirtualKeyboard {}
-    //CornerTrigger {}
 }

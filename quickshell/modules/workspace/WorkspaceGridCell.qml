@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell
+import Quickshell.Widgets
 
 Item {
     id: root
@@ -18,6 +20,8 @@ Item {
     property var activeSources: []
     property Item containerItem
     property Item dragProxyItem
+
+    property var windows: []
 
     signal targetHovered(int wsNumber)
     signal targetUnhovered(int wsNumber)
@@ -90,6 +94,7 @@ Item {
 
         Column {
             anchors.centerIn: parent
+            anchors.verticalCenterOffset: root.windows.length > 0 ? 12 : 0
             spacing: 1
 
             Text {
@@ -114,17 +119,65 @@ Item {
             }
         }
 
-        Rectangle {
-            anchors {
-                right: parent.right
-                bottom: parent.bottom
-                margins: 7
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 16
+            spacing: 4
+
+            Repeater {
+                model: Math.min(root.windows.length, 3)
+
+                Item {
+                    id: iconItem
+                    required property int index
+                    readonly property var win: root.windows[index]
+                    readonly property string appId: win && win.wayland ? win.wayland.appId : ""
+                    readonly property var entry: {
+                        if (appId) {
+                            var byId = DesktopEntries.byId(appId) || DesktopEntries.heuristicLookup(appId)
+                            if (byId) return byId
+                        }
+                        return win ? (DesktopEntries.heuristicLookup(win.title) || null) : null
+                    }
+
+                    function resolveIconPath() {
+                        var candidates = []
+                        if (entry && entry.icon) candidates.push(entry.icon)
+                            if (appId) {
+                                candidates.push(appId, appId.toLowerCase())
+                                if (appId.indexOf(".") !== -1) {
+                                    var tail = appId.split(".").pop()
+                                    candidates.push(tail, tail.toLowerCase())
+                                }
+                            }
+                            for (var i = 0; i < candidates.length; i++) {
+                                var path = Quickshell.iconPath(candidates[i], true)
+                                if (path.length > 0) return path
+                            }
+                            return Quickshell.iconPath("image-missing")
+                    }
+
+                    width: 16
+                    height: 16
+
+                    IconImage {
+                        anchors.fill: parent
+                        source: iconItem.resolveIconPath()
+                        asynchronous: true
+                    }
+                }
             }
-            width: 5
-            height: 5
-            radius: 2.5
-            color: "#4dabf7"
-            visible: root.hasWindows
+
+            Text {
+                visible: root.windows.length > 3
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+" + (root.windows.length - 3)
+                color: "#74c0fc"
+                font.family: "JetBrainsMono Nerd Font"
+                font.pixelSize: 11
+                font.bold: true
+            }
         }
     }
 

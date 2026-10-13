@@ -9,6 +9,8 @@ Item {
     required property bool isDragging
     required property int targetWs
 
+    property real maxHeight: 210
+
     signal focusWindow(var window)
     signal killWindow(var window)
     signal windowDragStarted(var window, string iconSource)
@@ -22,136 +24,167 @@ Item {
     Rectangle {
         id: listContainer
         width: parent.width
-        implicitHeight: listColumn.implicitHeight + 16
+        implicitHeight: Math.min(listColumn.implicitHeight + 16, root.maxHeight)
         color: "#11111b"
         radius: 16
         border.color: "#2a2a2a"
         border.width: 1
 
-        Column {
-            id: listColumn
-            anchors.centerIn: parent
-            spacing: 6
-            width: parent.width - 24
+        Flickable {
+            id: flick
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            anchors.topMargin: 8
+            anchors.bottomMargin: 8
+            contentWidth: width
+            contentHeight: listColumn.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            onContentHeightChanged: returnToBounds()
 
-            Repeater {
-                model: root.windowModel
+            Column {
+                id: listColumn
+                width: flick.width
+                spacing: 6
 
-                Rectangle {
-                    id: listItem
-                    required property var modelData
+                Repeater {
+                    model: root.windowModel
 
-                    width: listColumn.width
-                    height: 34
-                    radius: 6
-                    color: itemMouse.containsMouse
+                    Rectangle {
+                        id: listItem
+                        required property var modelData
+
+                        width: listColumn.width
+                        height: 34
+                        radius: 6
+                        color: itemMouse.containsMouse
                         ? "#313244"
                         : (modelData.activated ? "#1e1e2e" : "transparent")
-                    border.color: modelData.activated ? "#339af0" : (itemMouse.containsMouse ? "#45475a" : "transparent")
-                    border.width: 1
+                        border.color: modelData.activated ? "#339af0" : (itemMouse.containsMouse ? "#45475a" : "transparent")
+                        border.width: 1
 
-                    property string appId: modelData.wayland ? modelData.wayland.appId : ""
-                    property var entry: {
-                        if (appId) {
-                            var byAppId = DesktopEntries.byId(appId) || DesktopEntries.heuristicLookup(appId);
-                            if (byAppId) return byAppId;
+                        property string appId: modelData.wayland ? modelData.wayland.appId : ""
+                        property var entry: {
+                            if (appId) {
+                                var byAppId = DesktopEntries.byId(appId) || DesktopEntries.heuristicLookup(appId);
+                                if (byAppId) return byAppId;
+                            }
+                            return DesktopEntries.heuristicLookup(modelData.title) || null;
                         }
-                        return DesktopEntries.heuristicLookup(modelData.title) || null;
-                    }
 
-                    function resolveIconPath() {
-                        var candidates = [];
-                        if (entry && entry.icon) candidates.push(entry.icon);
-                        if (appId) {
-                            candidates.push(appId, appId.toLowerCase());
-                            if (appId.indexOf(".") !== -1) {
-                                var tail = appId.split(".").pop();
-                                candidates.push(tail, tail.toLowerCase());
+                        function resolveIconPath() {
+                            var candidates = [];
+                            if (entry && entry.icon) candidates.push(entry.icon);
+                            if (appId) {
+                                candidates.push(appId, appId.toLowerCase());
+                                if (appId.indexOf(".") !== -1) {
+                                    var tail = appId.split(".").pop();
+                                    candidates.push(tail, tail.toLowerCase());
+                                }
+                            }
+                            for (var i = 0; i < candidates.length; i++) {
+                                var path = Quickshell.iconPath(candidates[i], true);
+                                if (path.length > 0) return path;
+                            }
+                            return Quickshell.iconPath("image-missing");
+                        }
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 10
+
+                            IconImage {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                height: 18
+                                source: listItem.resolveIconPath()
+                                asynchronous: true
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 28
+                                text: {
+                                    var appName = listItem.entry && listItem.entry.name ? listItem.entry.name : listItem.appId;
+                                    if (appName && modelData.title) {
+                                        return appName + " — " + modelData.title;
+                                    }
+                                    return modelData.title || appName || "Window";
+                                }
+                                color: modelData.activated ? "#ffffff" : "#cdd6f4"
+                                font.pixelSize: 12
+                                font.family: "JetBrainsMono Nerd Font"
+                                elide: Text.ElideRight
                             }
                         }
-                        for (var i = 0; i < candidates.length; i++) {
-                            var path = Quickshell.iconPath(candidates[i], true);
-                            if (path.length > 0) return path;
-                        }
-                        return Quickshell.iconPath("image-missing");
-                    }
 
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 10
+                        MouseArea {
+                            id: itemMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            preventStealing: true
 
-                        IconImage {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 18
-                            height: 18
-                            source: listItem.resolveIconPath()
-                            asynchronous: true
-                        }
+                            property real pressX: 0
+                            property real pressY: 0
+                            property bool wasDragged: false
 
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 28
-                            text: {
-                                var appName = listItem.entry && listItem.entry.name ? listItem.entry.name : listItem.appId;
-                                if (appName && modelData.title) {
-                                    return appName + " — " + modelData.title;
-                                }
-                                return modelData.title || appName || "Window";
+                            onPressed: (mouse) => {
+                                pressX = mouse.x
+                                pressY = mouse.y
+                                wasDragged = false
                             }
-                            color: modelData.activated ? "#ffffff" : "#cdd6f4"
-                            font.pixelSize: 12
-                            font.family: "JetBrainsMono Nerd Font"
-                            elide: Text.ElideRight
-                        }
-                    }
 
-                    MouseArea {
-                        id: itemMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        preventStealing: true
+                            onPositionChanged: (mouse) => {
+                                if (!(mouse.buttons & Qt.LeftButton)) return
+                                    if (!wasDragged) {
+                                        const dx = mouse.x - pressX
+                                        const dy = mouse.y - pressY
+                                        if (dx * dx + dy * dy < 36) return
+                                            wasDragged = true
+                                            root.windowDragStarted(listItem.modelData, listItem.resolveIconPath())
+                                    }
+                                    const pt = itemMouse.mapToItem(root.parent, mouse.x, mouse.y)
+                                    root.windowDragMoved(pt.x, pt.y)
+                            }
 
-                        property real pressX: 0
-                        property real pressY: 0
-                        property bool wasDragged: false
+                            onReleased: { if (wasDragged) root.windowDragFinished(true) }
+                            onCanceled: { if (wasDragged) root.windowDragFinished(false) }
 
-                        onPressed: (mouse) => {
-                            pressX = mouse.x
-                            pressY = mouse.y
-                            wasDragged = false
-                        }
-
-                        onPositionChanged: (mouse) => {
-                            if (!(mouse.buttons & Qt.LeftButton)) return
-                                if (!wasDragged) {
-                                    const dx = mouse.x - pressX
-                                    const dy = mouse.y - pressY
-                                    if (dx * dx + dy * dy < 36) return
-                                        wasDragged = true
-                                        root.windowDragStarted(listItem.modelData, listItem.resolveIconPath())
-                                }
-                                const pt = itemMouse.mapToItem(root.parent, mouse.x, mouse.y)
-                                root.windowDragMoved(pt.x, pt.y)
-                        }
-
-                        onReleased: { if (wasDragged) root.windowDragFinished(true) }
-                        onCanceled: { if (wasDragged) root.windowDragFinished(false) }
-
-                        onClicked: (mouse) => {
-                            if (wasDragged) return
-                                if (mouse.button === Qt.RightButton) {
-                                    root.killWindow(listItem.modelData)
-                                } else {
-                                    root.focusWindow(listItem.modelData)
-                                }
+                            onClicked: (mouse) => {
+                                if (wasDragged) return
+                                    if (mouse.button === Qt.RightButton) {
+                                        root.killWindow(listItem.modelData)
+                                    } else {
+                                        root.focusWindow(listItem.modelData)
+                                    }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        // thin scroll indicator, only shown when there is more to scroll
+        Rectangle {
+            visible: flick.contentHeight > flick.height
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            y: flick.y + flick.visibleArea.yPosition * flick.height
+            width: 3
+            height: Math.max(16, flick.visibleArea.heightRatio * flick.height)
+            radius: 1.5
+            color: "#45475a"
+        }
+
+        // start from the top whenever a different workspace is shown
+        Connections {
+            target: root
+            function onTargetWsChanged() { flick.contentY = 0 }
         }
     }
 }

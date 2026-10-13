@@ -234,10 +234,15 @@ Item {
             onExited: pavucontrolProc.running = false
         }
 
-
+        // ================= Network ===================
         SysUtil {}
         // ================= tray =======================================
         Tray{}
+
+        // ================= Network ===================
+
+        Network {}
+        Bluetooth {}
 
         // ================= battery ===================
 
@@ -276,6 +281,7 @@ Item {
                 onExited: batterySegment.hovered = false
             }
         }
+
 
         // ================= custom/power ==============================
         Segment {

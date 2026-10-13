@@ -1,13 +1,22 @@
 // chapter 8 needs to be done //
 // start chapter 9 - 01:00:42-01:31:31 [strchr ??]//
-// start chapter 12: classes : 38:00
+// Revise chapter 10: functions and chapter 13: inheritence
+// start chapter 14
 // contructures
+
+//BroCode --> 02:24 BankApp;
+	     02:28 Rock Paper Scisor; 
+Starting from : 03:13
+// 
 
 //learn how to use jjazzlab
 
-1. after save, i still want undo and redo option.
-2. everytime i trigger a code collaps, it treats the document as if i have changed something
+----# ChaosPad
+chaude-brave: fix batch 3 & ask i there are anymore bugs
+batch 5b and c
 
+FIX: code folding
+----
 
 //disable cursor when typing
 

@@ -8,3 +8,6 @@ Tray 1.0 Tray.qml
 Notes 1.0 Notes.qml
 SideScroller SideScroller.qml
 SysUtil SysUtil.qml
+FanSpeed FanSpeed.qml
+Network Network.qml
+Bluetooth Bluetooth.qml
