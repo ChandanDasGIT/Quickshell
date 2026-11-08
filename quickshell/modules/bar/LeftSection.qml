@@ -88,7 +88,7 @@ RowLayout {
                                 id: titleText
                                 width: parent.width
                                 text: modelData.title || "Window"
-                                color: Theme.text
+                                color: Theme.textColor
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
                                 horizontalAlignment: Text.AlignHCenter
@@ -117,20 +117,33 @@ RowLayout {
             return 1
         }
 
-        // Current workspace number
-        Text {
+        // Current workspace number (also toggles the workspace icons)
+        Rectangle {
             Layout.preferredWidth: 18
             Layout.preferredHeight: 24
             Layout.alignment: Qt.AlignVCenter
+            radius: 4
 
-            text: workspaceBar.focusedWorkspaceId
-            color: Theme.iconColor
+            color: wsNumberMouseArea.containsMouse ? "#33ffffff" : "transparent"
 
-            font.family: root.nerdFontFamily
-            font.bold: true
-            font.pixelSize: 16
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            Text {
+                anchors.fill: parent
+                text: workspaceBar.focusedWorkspaceId
+                color: Theme.iconColor
+
+                font.family: root.nerdFontFamily
+                font.bold: true
+                font.pixelSize: 16
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            MouseArea {
+                id: wsNumberMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: workspaceBar.showWorkspaceIcons = !workspaceBar.showWorkspaceIcons
+            }
         }
 
         // Workspace icons + Toggle
@@ -260,15 +273,30 @@ RowLayout {
         }
     }
 
-    // ---- Media (playerctl) ----
+    // ---- Media (MPRIS) ----
+    // Track metadata is set by the media source (e.g. any website playing audio),
+    // so it is always rendered as plain text, never as rich text/HTML.
     Text {
         id: mediaText
         Layout.alignment: Qt.AlignVCenter
 
-        property string playerOutput: ""
+        readonly property var activePlayer: Mpris.players.values.find(p => p.isPlaying) ?? null
+
+        function clean(s) {
+            return String(s ?? "").replace(/\s+/g, " ").trim()
+        }
+
+        readonly property string playerOutput: {
+            if (!activePlayer) return ""
+            const title = clean(activePlayer.trackTitle)
+            const artist = clean(activePlayer.trackArtist)
+            const line = artist && title ? artist + " - " + title : (title || artist)
+            return line ? "󰝚  " + line : ""
+        }
 
         visible: playerOutput !== ""
         text: playerOutput
+        textFormat: Text.PlainText
         color: Theme.iconColor
         font.pixelSize: 16
         elide: Text.ElideRight
@@ -306,34 +334,10 @@ RowLayout {
                     anchors.leftMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
                     text: mediaText.playerOutput
+                    textFormat: Text.PlainText
                     color: "#ffffff"
                     font.pixelSize: 11
                 }
-            }
-        }
-
-        Process {
-            id: playerctlProc
-            command: [
-                "sh", "-c",
-                "playerctl -a metadata --format '{{playerName}}|{{status}}|{{artist}} - {{title}}' 2>/dev/null | awk -F'|' '$2==\"Playing\"{print $3; exit}'"
-            ]
-            running: true
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    var output = text.trim()
-                    mediaText.playerOutput = output !== "" ? "󰝚  " + output : ""
-                }
-            }
-        }
-
-        Timer {
-            interval: 1000
-            running: true
-            repeat: true
-            onTriggered: {
-                if (!playerctlProc.running)
-                    playerctlProc.running = true
             }
         }
     }

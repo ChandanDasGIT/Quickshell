@@ -69,7 +69,7 @@ Rectangle {
         id: trayPopup
 
         implicitWidth: 220
-        height: listColumn.implicitHeight + 16
+        implicitHeight: listColumn.implicitHeight + 16
 
         color: "transparent"
         visible: false
@@ -227,8 +227,8 @@ Rectangle {
 
         property var trayMenu
 
-        width: 220
-        height: menuColumn.implicitHeight + 16
+        implicitWidth: 220
+        implicitHeight: menuColumn.implicitHeight + 16
 
         color: "transparent"
         visible: false
@@ -241,7 +241,7 @@ Rectangle {
         function openFor(menu, y, h) {
             visible = false
             trayMenu = menu
-            anchor.rect.x = trayPopup.width
+            anchor.rect.x = trayPopup.implicitWidth
             anchor.rect.y = y
             anchor.rect.width = 1
             anchor.rect.height = h
@@ -252,7 +252,7 @@ Rectangle {
 
         QsMenuOpener {
             id: menuOpener
-            menu: menuPopup.trayMenu
+            menu: menuPopup.trayMenu ?? null
         }
 
         Rectangle {

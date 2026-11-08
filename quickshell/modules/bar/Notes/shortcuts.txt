@@ -4,6 +4,7 @@
 	git add .
 	git commit -m ""
 	git push
+	// if error: git pull --rebase origin main
 
 #WORKSPACE
 win+arrowKeys = change focus

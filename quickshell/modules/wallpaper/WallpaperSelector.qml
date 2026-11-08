@@ -10,7 +10,7 @@ import "."
 PanelWindow {
     id: selectorWindow
 
-    screen: Quickshell.focusedScreen
+    screen: Quickshell.focusedScreen ?? Quickshell.screens[0] ?? null
 
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-wallpaper-selector"

@@ -553,7 +553,7 @@ Singleton {
 
     PanelWindow {
         id: bottomTrigger
-        screen: Quickshell.focusedScreen
+        screen: Quickshell.focusedScreen ?? Quickshell.screens[0] ?? null
 
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "quickshell-workspace-trigger"
@@ -567,8 +567,8 @@ Singleton {
             right: false
         }
 
-        width: 420
-        height: 2
+        implicitWidth: 420
+        implicitHeight: 2
         visible: !root.pickerVisible
 
         Timer {

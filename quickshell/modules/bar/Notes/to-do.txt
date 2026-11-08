@@ -4,21 +4,102 @@
 // start chapter 14
 // contructures
 
+
+
 //BroCode --> 02:24 BankApp;
 	     02:28 Rock Paper Scisor; 
 Starting from : 03:13
-// 
+....................................................................
+////ProjectDAW::ChaosMaker////
+[DAW] 
+
+// i need the same tone as this vid: https://youtu.be/Qp_DD2uWnCg?si=y1gIuqApTool4uP_
+
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+in yeet downloader, need to find a way to download whole playlists. maybe automate the process to make a separate temp playlist for 100 over vids, then download each set of 100 vids and then del the playlist?
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+in ChaoticNotepad: keep the + sighn right after new tabs
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+ChaoticFiles: 1. is my app lacking something compared to thunar? why am i missing open with wine? 2. when opening show in folder from browsers, how do i set my app to be opened?
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+..............
+==> in quickshell, add wifi hotspot
+..............
+
+[ ] ChaoticFiles: the closing or tabs are visually glitchy; spacebar to see image, music and vid
+
+[ ] UtilityLinux: improve
+[ ] quickshell: how hard is it to turn this entire setup of quickshell into an customising app with modules and adjustable settings with cpp and qml?
+--------------------------------------------------------------------
+------------------------------week later----------------------------
+------------------------------TUNED CHAOS---------------------------
+
+
+
+-----------------------------------------------------------------
+
+[ ] pdf: also make a vector art just like the pdf where you show case how every .h file is being conected to whom and which qml
+
+//1. brave 2.firefox 3.floorp 4. helium
+
+########## ChaoticNotepad ##########
+	1. # add continuous scroll while selecting text
+	2. # in pop up menu, i get option to 'paste' and 'paste and go' for file path when i right click on file path
+	
+	//docx support
+
+	// from the backend/textengine folder separate every thing from pureply text engine. move them outside textengine folder and in backend, put them in appropriate folders.
+ for example maybe: textbuffer, fileIO, undohistory,syntaxhighlight
+minimap,gutter , findreplace, filebrowser ,dialog, tabbar ,tabs, textview,textstyle ,inputevents, inputHandler (i can be wrong in judgement so do the judging yourself)
+	can take reference from this if it is relevent:
+├── backend/                         # Pure C++ — no QML exposure
+│   │
+│   ├── core/
+│   │   ├── textbuffer/
+│   │   ├── document/
+│   │   ├── editing/
+│   │   ├── cursor/
+│   │   ├── selection/
+│   │   ├── multicursor/
+│   │   └── undohistory/
+│   │
+│   ├── text/
+│   │   ├── syntaxhighlight/
+│   │   │   ├── cpp/
+│   │   │   ├── javascript/
+│   │   │   ├── python/
+│   │   │   └── rust/
+│   │   ├── folding/
+│   │   ├── wordwrap/
+│   │   ├── textstats/
+│   │   └── textanalysis/
+│   │
+│   ├── services/
+│   │   ├── fileio/
+│   │   ├── encoding/
+│   │   ├── search/
+│   │   ├── findreplace/
+│   │   └── filesystem/
+│   │
+│   ├── editor/
+│   │   ├── editorengine/
+│   │   ├── inputhandler/
+│   │   └── commands/
+│   │
+│   ├── navigation/
+│   │   ├── documentmanager/
+│   │   └── sessionmanager/
+│   │
+│   └── common/
+│       ├── types/
+│       ├── errors/
+│       └── utilities/
+
+########## -------------- ##########
 
 //learn how to use jjazzlab
-
-----# ChaosPad
-chaude-brave: fix batch 3 & ask i there are anymore bugs
-batch 5b and c
-
-FIX: code folding
-----
-
-//disable cursor when typing
 
 2. c++ app: ESSENTIAL: 
 	1. brightness slider for diff monitor (ddcutil)
@@ -28,21 +109,23 @@ FIX: code folding
 	5. seeing storage (remaining and total)
 -------------------------------
 
-5. change shortcut update: auto system snapshot and if update makes something wrong it will auto revert to the snapshot
-
-
 [X] apps to recreate in c++:
 		1. snake game
-		2. notepad
+		2. notepad // almost done
 		3. local music player
-		4. vid editor
-		5. daw
-		6. cc tv app
-		7. ricing tool for hyprland
--------------------------------
-c++ skills for music app:
-1. oops 
-2. Signals and Slots (Qt’s Event System)
-3. Smart Pointers (std::unique_ptr)
-4. Standard Containers (QList or std::vector)
-5. std::filesystem
+		4. local file browser
+		5. vid editor
+		6. daw
+		7. cc tv app
+		8. ricing tool for hyprland (frontend for quickshell)
+
+1. ChaoticMusicPLayer - done
+2. ChaoticNotepad - done > renamed 'Tuned Chaos'
+3. ChaoticFileBrowser - done
+4. ChaoticWebBrowser --> priority 1
+5. ChaoticKeepClone --> priority 0
+improve quickshell --> done
+applocker for linux
+6. cc tv app --> priority 2
+7. basic DAW --> doing
+

@@ -12,6 +12,15 @@ import Quickshell.Services.Notifications
 Scope {
     id: root
 
+    // Apps often HTML-escape text even though we don't advertise markup support.
+    // Decode the common entities; text is still rendered as plain text, never HTML.
+    function decodeEntities(s) {
+        return String(s ?? "")
+            .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"').replace(/&#0*39;|&apos;/g, "'")
+            .replace(/&amp;/g, "&")
+    }
+
     // ---- Theme / Palette ----------------------------------------------------
     property color bgColor: "#e61a1c27"          // Deep slate navy translucent
     property color cardColor: "#222538"         // Elevated card base
@@ -26,11 +35,14 @@ Scope {
     property int defaultTimeoutMs: 3500
     property int lowUrgencyTimeoutMs: 1500
     property int fadeDurationMs: 250
+    property int maxTimeoutMs: 30000            // cap for apps that request very long timeouts
 
     // ---- State ------------------------------------------------------------
     property bool centerVisible: false
     property bool dnd: false                    // Suppress toasts when active
-    property var poppedIds: ({})                // notification.id -> true while toast is active
+    property var poppedIds: ({})                // notification.id -> pop serial (truthy) while toast is active
+    property int popSerial: 0
+    property bool acceptPopups: false           // false for a moment after (re)load, see startupQuiet
 
     function toggleCenter() { centerVisible = !centerVisible; }
     function showCenter() { centerVisible = true; }
@@ -39,9 +51,20 @@ Scope {
 
     function timeoutFor(n) {
         if (n.urgency === NotificationUrgency.Critical) return -1;
-        if (n.expireTimeout > 0) return n.expireTimeout * 1000;
+        // expireTimeout is already in milliseconds (straight from the D-Bus call).
+        // It used to be multiplied by 1000, so an app asking for 5 s got ~83 minutes.
+        if (n.expireTimeout > 0) return Math.min(n.expireTimeout, root.maxTimeoutMs);
         if (n.urgency === NotificationUrgency.Low) return root.lowUrgencyTimeoutMs;
         return root.defaultTimeoutMs;
+    }
+
+    // Show (or re-show) the toast for a notification. Bumping the serial makes an
+    // already-visible toast restart its timer instead of being ignored.
+    function popup(n) {
+        if (root.dnd || !root.acceptPopups) return;
+        const p = Object.assign({}, root.poppedIds);
+        p[n.id] = ++root.popSerial;
+        root.poppedIds = p;
     }
 
     function removePoppedId(id) {
@@ -66,13 +89,30 @@ Scope {
 
         onNotification: (notification) => {
             notification.tracked = true;
+            root.popup(notification);
 
-            if (!root.dnd) {
-                const p = Object.assign({}, root.poppedIds);
-                p[notification.id] = true;
-                root.poppedIds = p;
-            }
+            // Apps like Tuned Chaos *replace* their notification (same id) on every track.
+            // Quickshell updates the existing object in place without emitting
+            // onNotification again, so watch the content and re-pop when it changes.
+            const n = notification;
+            const repop = () => root.popup(n);
+            n.summaryChanged.connect(repop);
+            n.bodyChanged.connect(repop);
+
+            // If the app (or the history panel) closes it, forget the toast too.
+            const id = n.id;
+            n.closed.connect(() => root.removePoppedId(id));
         }
+    }
+
+    // After a config reload Quickshell re-delivers every kept notification through
+    // onNotification. Ignore popups for a moment so they don't all flash up again
+    // (they still go to history and still get their change-watchers connected).
+    Timer {
+        id: startupQuiet
+        interval: 1500
+        running: true
+        onTriggered: root.acceptPopups = true
     }
 
     // ---- Shared Card Body ---------------------------------------------------
@@ -133,7 +173,8 @@ Scope {
 
         Text {
             Layout.fillWidth: true
-            text: content.modelData.summary
+            text: root.decodeEntities(content.modelData.summary)
+            textFormat: Text.PlainText
             color: root.textColor
             font.pixelSize: 13
             font.weight: Font.DemiBold
@@ -143,7 +184,8 @@ Scope {
 
         Text {
             Layout.fillWidth: true
-            text: content.modelData.body
+            text: root.decodeEntities(content.modelData.body)
+            textFormat: Text.PlainText
             color: root.subTextColor
             font.pixelSize: 12
             wrapMode: Text.WordWrap
@@ -199,7 +241,9 @@ Scope {
         anchors { top: true; right: true }
         margins { top: 46; right: 16 }
         implicitWidth: root.popupWidth
-        implicitHeight: popupColumn.implicitHeight
+        implicitHeight: Math.max(popupColumn.implicitHeight, 1)
+        // Only map the surface while there is something to show
+        visible: toastRepeater.count > 0
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:notifications:popup"
@@ -210,6 +254,7 @@ Scope {
             spacing: 10
 
             Repeater {
+                id: toastRepeater
                 model: ScriptModel {
                     values: [...notifServer.trackedNotifications.values].filter(n => root.poppedIds[n.id])
                 }
@@ -218,37 +263,75 @@ Scope {
                     id: toastCard
                     required property var modelData
 
+                    // Timeout is fixed when the toast appears. Re-reading it live let an app
+                    // that keeps updating its notification restart the timer forever.
+                    property int timeoutMs: 0
+                    Component.onCompleted: timeoutMs = root.timeoutFor(modelData)
+
+                    // Changes whenever the notification is re-popped (e.g. replaced with a new track):
+                    // un-fade and restart the timeout.
+                    readonly property int serial: root.poppedIds[modelData.id] || 0
+                    onSerialChanged: {
+                        if (serial === 0) return
+                        timeoutMs = root.timeoutFor(modelData)
+                        userClosed = false
+                        closing = false
+                        // stop + start the timer without breaking its `running` binding
+                        rearm = true
+                        rearm = false
+                    }
+                    property bool rearm: false
+
+                    readonly property bool hovered: toastHover.hovered
+                    property bool closing: false        // fading out
+                    property bool userClosed: false     // closed via the X button
+
+                    function close(byUser) {
+                        if (closing) return
+                        userClosed = byUser
+                        closing = true
+                    }
+
                     width: root.popupWidth
                     implicitHeight: cardContent.implicitHeight + 24
                     radius: 14
                     color: root.popupCardColor
-                    border.color: root.borderColor
+                    border.color: hovered ? Qt.lighter(root.borderColor, 1.4) : root.borderColor
                     border.width: 1
                     clip: true
-                    opacity: 1.0
+
+                    opacity: closing ? 0.0 : 1.0
+                    Behavior on opacity {
+                        NumberAnimation { duration: root.fadeDurationMs; easing.type: Easing.OutCubic }
+                    }
+
+                    // Hovering keeps the toast up. If it was already fading out on its own, bring it back.
+                    HoverHandler { id: toastHover }
+                    onHoveredChanged: if (hovered && closing && !userClosed) closing = false
 
                     NotificationContent {
                         id: cardContent
                         modelData: toastCard.modelData
-                        onCloseClicked: fadeAnim.start()
+                        onCloseClicked: toastCard.close(true)
                     }
 
+                    // Auto-dismiss. Pauses while hovered and restarts with the full timeout when the mouse leaves.
                     Timer {
                         id: dismissTimer
-                        interval: root.timeoutFor(toastCard.modelData)
-                        running: interval > 0
+                        interval: Math.max(toastCard.timeoutMs, 1)
+                        running: toastCard.timeoutMs > 0 && !toastCard.hovered && !toastCard.closing && !toastCard.rearm
                         repeat: false
-                        onTriggered: fadeAnim.start()
+                        onTriggered: toastCard.close(false)
                     }
 
-                    NumberAnimation {
-                        id: fadeAnim
-                        target: toastCard
-                        property: "opacity"
-                        to: 0.0
-                        duration: root.fadeDurationMs
-                        easing.type: Easing.OutCubic
-                        onFinished: root.removePoppedId(toastCard.modelData.id)
+                    // Removal is timer-driven, not tied to the animation finishing, so a stalled
+                    // or interrupted animation can't leave a toast stuck on screen.
+                    Timer {
+                        id: removeTimer
+                        interval: root.fadeDurationMs + 50
+                        running: toastCard.closing
+                        repeat: false
+                        onTriggered: root.removePoppedId(toastCard.modelData.id)
                     }
                 }
             }

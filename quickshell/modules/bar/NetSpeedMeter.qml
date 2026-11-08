@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-
+ 
 Item {
     id: root
 
@@ -21,12 +21,18 @@ Item {
         property bool initialized: false
     }
 
+    // Always at most 2 digits: "9.5", "42", "0.3" — steps up a unit once
+    // the value would reach 100 (e.g. 150 K/s -> 0.1 M/s).
     function formatSpeed(bytesPerSec) {
-        if (bytesPerSec < 1024) return bytesPerSec.toFixed(0) + " B/s";
-        let kb = bytesPerSec / 1024;
-        if (kb < 1024) return kb.toFixed(1) + " K/s";
-        let mb = kb / 1024;
-        return mb.toFixed(1) + " M/s";
+        const units = ["B", "K", "M", "G"];
+        let v = bytesPerSec;
+        let u = 0;
+        while (v >= 99.5 && u < units.length - 1) {
+            v /= 1024;
+            u++;
+        }
+        const num = (u === 0 || v >= 9.95) ? v.toFixed(0) : v.toFixed(1);
+        return num + " " + units[u] + "/s";
     }
 
     // Runs every second to query network statistics

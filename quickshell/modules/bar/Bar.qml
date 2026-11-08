@@ -18,7 +18,6 @@ PanelWindow {
         right: true
     }
 
-    height: 34
     implicitHeight: 34
     color: "transparent"
 

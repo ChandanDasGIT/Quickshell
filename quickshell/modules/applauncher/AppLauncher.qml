@@ -28,6 +28,7 @@ Scope {
     // ---- Persistent Recent Apps Storage ---------------------------------
     Settings {
         id: recentStore
+        location: "file://" + Quickshell.env("HOME") + "/.local/state/quickshell/applauncher.ini"
         category: "AppLauncher"
         property var recentAppIds: []
     }
@@ -48,9 +49,12 @@ Scope {
     // ---- Public API -----------------------------------------------------
     property bool isVisible: false
     property string query: ""
+    property bool showAll: false        // grid of every app instead of recents
+    property int gridColumns: 5
 
     function show() {
         query = "";
+        showAll = false;
         isVisible = true;
     }
 
@@ -72,8 +76,38 @@ Scope {
     }
 
     function launchCurrent() {
-        const item = list.currentEntry();
+        const item = showAll ? grid.currentEntry() : list.currentEntry();
         if (item) launch(item);
+    }
+
+    function toggleShowAll() {
+        showAll = !showAll;
+        list.currentIndex = 0;
+        grid.currentIndex = 0;
+        searchInput.forceActiveFocus();
+    }
+
+    // Every launchable app after the exclusion filters
+    function visibleApps() {
+        return [...DesktopEntries.applications.values]
+            .filter(d => d.name && !d.noDisplay)
+            .filter(d => !(d.categories || []).some(c => root.excludedCategories.includes(c)))
+            .filter(d => !root.excludedNames.some(n => d.name.toLowerCase().includes(n.toLowerCase())));
+    }
+
+    // Apps with a word starting with q; full-name prefix matches first
+    function matchApps(apps, q) {
+        const matched = apps.filter(d => {
+            const words = d.name.toLowerCase().split(/\s+/);
+            return words.some(w => w.startsWith(q));
+        });
+        matched.sort((a, b) => {
+            const aFull = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+            const bFull = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+            if (aFull !== bFull) return aFull - bFull;
+            return a.name.localeCompare(b.name);
+        });
+        return matched;
     }
 
     IpcHandler {
@@ -130,6 +164,7 @@ Scope {
                 searchInput.text = "";
                 searchInput.forceActiveFocus();
                 list.currentIndex = 0;
+                grid.currentIndex = 0;
             }
         }
 
@@ -183,6 +218,7 @@ Scope {
                         onTextChanged: {
                             root.query = text;
                             list.currentIndex = 0;
+                            grid.currentIndex = 0;
                         }
 
                         Text {
@@ -197,6 +233,19 @@ Scope {
                             if (event.key === Qt.Key_Escape) {
                                 root.hide();
                                 event.accepted = true;
+                            } else if (root.showAll && event.key === Qt.Key_Down) {
+                                grid.moveCurrentIndexDown();
+                                event.accepted = true;
+                            } else if (root.showAll && event.key === Qt.Key_Up) {
+                                grid.moveCurrentIndexUp();
+                                event.accepted = true;
+                            } else if (root.showAll && event.key === Qt.Key_Right
+                                       && searchInput.cursorPosition === searchInput.text.length) {
+                                grid.moveCurrentIndexRight();
+                                event.accepted = true;
+                            } else if (root.showAll && event.key === Qt.Key_Left && searchInput.text.length === 0) {
+                                grid.moveCurrentIndexLeft();
+                                event.accepted = true;
                             } else if (event.key === Qt.Key_Down) {
                                 list.currentIndex = Math.min(list.currentIndex + 1, list.count - 1);
                                 event.accepted = true;
@@ -207,6 +256,35 @@ Scope {
                                 root.launchCurrent();
                                 event.accepted = true;
                             }
+                        }
+                    }
+
+                    // Show-all toggle
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: 8
+                        color: root.showAll
+                            ? Qt.alpha(root.accentColor, allMouse.containsMouse ? 0.3 : 0.18)
+                            : (allMouse.containsMouse ? root.selectedColor : "transparent")
+                        border.color: root.showAll ? Qt.alpha(root.accentColor, 0.4) : "transparent"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\uf00a"   // grid
+                            color: root.showAll ? root.accentColor : root.subTextColor
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 16
+                        }
+
+                        MouseArea {
+                            id: allMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.toggleShowAll()
                         }
                     }
                 }
@@ -220,6 +298,7 @@ Scope {
                 // ---- Results list ---------------------------------------
                 ListView {
                     id: list
+                    visible: !root.showAll
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
@@ -235,10 +314,7 @@ Scope {
                     model: ScriptModel {
                         values: {
                             const q = root.query.trim().toLowerCase();
-                            const all = [...DesktopEntries.applications.values]
-                                .filter(d => d.name && !d.noDisplay)
-                                .filter(d => !(d.categories || []).some(c => root.excludedCategories.includes(c)))
-                                .filter(d => !root.excludedNames.some(n => d.name.toLowerCase().includes(n.toLowerCase())));
+                            const all = root.visibleApps();
 
                             // When empty query: display up to 10 recent apps first, fill remainder alphabetically
                             if (q === "") {
@@ -268,19 +344,7 @@ Scope {
                             }
 
                             // When typing: filter matched apps (without recent tag)
-                            const matched = all.filter(d => {
-                                const words = d.name.toLowerCase().split(/\s+/);
-                                return words.some(w => w.startsWith(q));
-                            });
-
-                            matched.sort((a, b) => {
-                                const aFull = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-                                const bFull = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-                                if (aFull !== bFull) return aFull - bFull;
-                                return a.name.localeCompare(b.name);
-                            });
-
-                            return matched.slice(0, root.maxResults).map(d => ({ entry: d, isRecent: false }));
+                            return root.matchApps(all, q).slice(0, root.maxResults).map(d => ({ entry: d, isRecent: false }));
                         }
                     }
 
@@ -380,6 +444,113 @@ Scope {
                     Text {
                         anchors.centerIn: parent
                         visible: list.count === 0
+                        text: "No matching applications"
+                        color: root.subTextColor
+                        font.pixelSize: 14
+                    }
+                }
+
+                // ---- All apps grid --------------------------------------
+                GridView {
+                    id: grid
+                    visible: root.showAll
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    cellWidth: Math.floor(width / root.gridColumns)
+                    cellHeight: 96
+                    currentIndex: 0
+                    highlightMoveDuration: 80
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    function currentEntry() {
+                        if (count === 0) return null;
+                        return model.values[currentIndex];
+                    }
+
+                    // Alphabetical when empty; filtered (no result cap) while typing
+                    model: ScriptModel {
+                        values: {
+                            if (!root.showAll) return [];
+                            const q = root.query.trim().toLowerCase();
+                            const all = root.visibleApps();
+                            const apps = q === ""
+                                ? all.sort((a, b) => a.name.localeCompare(b.name))
+                                : root.matchApps(all, q);
+                            return apps.map(d => ({ entry: d, isRecent: false }));
+                        }
+                    }
+
+                    delegate: Item {
+                        id: cell
+                        required property var modelData
+                        required property int index
+
+                        readonly property var appEntry: modelData.entry
+                        readonly property string resolvedIcon: (appEntry && appEntry.icon) ? Quickshell.iconPath(appEntry.icon, true) : ""
+
+                        width: grid.cellWidth
+                        height: grid.cellHeight
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            radius: 10
+                            color: cell.index === grid.currentIndex ? root.selectedColor : "transparent"
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 6
+
+                                IconImage {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    source: cell.resolvedIcon
+                                    visible: cell.resolvedIcon.length > 0
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    visible: cell.resolvedIcon.length === 0
+                                    text: "\u25a2"
+                                    color: root.subTextColor
+                                    font.pixelSize: 36
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    text: cell.appEntry.name
+                                    color: root.textColor
+                                    font.pixelSize: 12
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignTop
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: grid.currentIndex = cell.index
+                            onClicked: root.launch(cell.modelData)
+                        }
+                    }
+
+                    // Empty state
+                    Text {
+                        anchors.centerIn: parent
+                        visible: grid.count === 0
                         text: "No matching applications"
                         color: root.subTextColor
                         font.pixelSize: 14

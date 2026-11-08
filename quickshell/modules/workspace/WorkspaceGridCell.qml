@@ -155,7 +155,7 @@ Item {
                                 var path = Quickshell.iconPath(candidates[i], true)
                                 if (path.length > 0) return path
                             }
-                            return Quickshell.iconPath("image-missing")
+                            return Quickshell.iconPath("application-x-executable", true) || Quickshell.iconPath("image-missing", true)
                     }
 
                     width: 16

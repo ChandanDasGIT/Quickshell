@@ -9,7 +9,6 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Services.SystemTray
 import Quickshell.DBusMenu
-import "./notes"
 import "../wallpaper"
 import "../workspace"
 
@@ -262,9 +261,7 @@ Item {
 
             label: device ? capacity + "%" : "--"
 
-            ToolTip.visible: hovered
-            ToolTip.delay: 400
-            ToolTip.text: {
+            tooltip: {
                 if (!device) return "No battery detected"
                     var status = charging ? "Charging" : (plugged ? "Plugged in" : "Discharging")
                     var timeLeft = charging ? device.timeToFull : device.timeToEmpty
@@ -272,13 +269,6 @@ Item {
                     ? Math.floor(timeLeft / 3600) + "h " + Math.floor((timeLeft % 3600) / 60) + "m"
                     : "calculating..."
                     return status + "\n" + (charging ? "Time to full: " : "Time remaining: ") + timeStr
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: batterySegment.hovered = true
-                onExited: batterySegment.hovered = false
             }
         }
 

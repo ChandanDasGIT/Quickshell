@@ -23,12 +23,38 @@ Item {
     property bool linkBusy: false
     property bool wifiBusy: false
     property bool flightBusy: false
+    property bool hotspotActive: false
+    property string hotspotDevice: ""        // interface the hotspot runs on
+    property var hotspotClientList: []       // [{ mac, ip, name }]
+    readonly property int hotspotClients: hotspotClientList.length
+    property bool hotspotClientsOpen: false  // device list dropdown
+    property bool hotspotBusy: false
+    property bool hotspotSettingsOpen: false
+    property bool hotspotEditing: false      // password field unlocked for typing
+    property bool hotspotShowPass: false     // reveal password in the field
+    property string hotspotSavedPass: ""     // last known saved password
+    property string hotspotSavedSsid: ""     // last known saved SSID
+    readonly property string hotspotProfile: "Hotspot"
     property string busySsid: ""        // network currently connecting/disconnecting
     property string expandedSsid: ""    // row with its action area open
     property string lastError: ""
     property bool refreshQueued: false
     property var pendingEntries: null   // list update deferred while a row is open
     readonly property bool isScanning: wifiRescanProc.running || rescanWait.running
+
+    onHotspotSettingsOpenChanged: {
+        hotspotEditing = false;
+        hotspotShowPass = false;
+        if (hotspotSettingsOpen && !hotspotReadProc.running) hotspotReadProc.running = true;
+    }
+
+    // Leaving edit mode (save or Escape) restores the saved password in the field
+    onHotspotEditingChanged: {
+        if (!hotspotEditing) {
+            hotspotSsidInput.text = hotspotSavedSsid;
+            hotspotPassInput.text = hotspotSavedPass;
+        }
+    }
 
     onExpandedSsidChanged: {
         if (expandedSsid === "" && pendingEntries !== null) {
@@ -106,6 +132,33 @@ Item {
         linkBusy = true;
         linkProc.connectMode = (netType === "none");
         linkProc.running = true;
+    }
+
+    function toggleHotspot() {
+        if (hotspotToggleProc.running) return;
+        lastError = "";
+        hotspotBusy = true;
+        hotspotToggleProc.enable = !hotspotActive;
+        hotspotToggleProc.running = true;
+    }
+
+    function saveHotspot(ssid, pass) {
+        if (hotspotPassProc.running) return;
+        ssid = ssid.trim();
+        if (ssid.length < 1 || ssid.length > 32) {
+            lastError = "Hotspot name must be 1-32 characters";
+            errorTimer.restart();
+            return;
+        }
+        if (pass.length < 8 || pass.length > 63) {
+            lastError = "Hotspot password must be 8-63 characters";
+            errorTimer.restart();
+            return;
+        }
+        lastError = "";
+        hotspotPassProc.ssid = ssid;
+        hotspotPassProc.pass = pass;
+        hotspotPassProc.running = true;
     }
 
     // Parse saved profiles + visible networks into a model-ready list
@@ -216,17 +269,29 @@ Item {
                 const ignored = ["loopback", "bridge", "veth", "tun", "dummy", "wifi-p2p"];
                 const rank = { "ethernet": 0, "wifi": 1 };
                 let best = null;
+                let hotspot = false;
 
                 for (let i = 2; i < lines.length; i++) {
                     if (!lines[i]) continue;
                     const p = netRoot.splitTerse(lines[i]); // DEVICE, TYPE, STATE, CONNECTION
                     if (p.length < 4 || !p[2].startsWith("connected")) continue;
+                    if (p[1] === "wifi" && p[3] === netRoot.hotspotProfile) {
+                        hotspot = true;
+                        netRoot.hotspotDevice = p[0];
+                    }
                     if (ignored.indexOf(p[1]) >= 0) continue;
                     const r = rank[p[1]] !== undefined ? rank[p[1]] : 2;
                     if (!best || r < best.rank) best = { dev: p[0], type: p[1], name: p[3], rank: r };
                 }
 
                 netRoot.wifiEnabled = wifiOn;
+                netRoot.hotspotActive = hotspot;
+                if (!hotspot) {
+                    netRoot.hotspotDevice = "";
+                    netRoot.hotspotClientList = [];
+                } else if (netPopup.visible && !hotspotClientsProc.running) {
+                    hotspotClientsProc.running = true;
+                }
                 netRoot.flightMode = !wifiOn && !wwanOn;
 
                 if (best) {
@@ -289,6 +354,139 @@ Item {
         property bool enable: true   // true = radios on (leave airplane mode)
         command: ["nmcli", "radio", "all", enable ? "on" : "off"]
         onExited: { netRoot.flightBusy = false; netRoot.refresh(); }
+    }
+
+    // Hotspot on: reuse the saved "Hotspot" profile if there is one, otherwise let
+    // NetworkManager create it (random password, readable later via the gear).
+    Process {
+        id: hotspotToggleProc
+        property bool enable: true
+        environment: ({ "NM_HS": netRoot.hotspotProfile })
+        command: [
+            "bash", "-c",
+            enable
+            ? "nmcli radio wifi on;" +
+              "if nmcli -g NAME c show | grep -Fxq -- \"$NM_HS\"; then nmcli c up id \"$NM_HS\";" +
+              "else nmcli dev wifi hotspot con-name \"$NM_HS\"; fi"
+            : "nmcli c down id \"$NM_HS\""
+        ]
+        onExited: (code) => {
+            if (code !== 0) {
+                netRoot.lastError = enable ? "Couldn't start hotspot" : "Couldn't stop hotspot";
+                errorTimer.restart();
+            }
+            netRoot.hotspotBusy = false;
+            netRoot.refresh();
+        }
+    }
+
+    // List authorized stations on the hotspot interface (works unprivileged).
+    // MAC -> IP via the neighbour table, IP -> hostname via a reverse lookup
+    // against NM's dnsmasq, which knows the names clients sent over DHCP.
+    // Output: one "mac<TAB>ip<TAB>name" line per client.
+    Process {
+        id: hotspotClientsProc
+        environment: ({ "NM_DEV": netRoot.hotspotDevice })
+        command: [
+            "bash", "-c",
+            "gw=$(ip -4 -o addr show dev \"$NM_DEV\" | awk '{print $4; exit}' | cut -d/ -f1);" +
+            "iw dev \"$NM_DEV\" station dump 2>/dev/null" +
+            " | awk '/^Station/{mac=$2} /authorized:[[:space:]]*yes/{print mac}'" +
+            " | while read -r mac; do" +
+            "   ip=$(ip -4 neigh show dev \"$NM_DEV\" | awk -v m=\"$mac\" 'tolower($3)==tolower(m){print $1; exit}');" +
+            "   name=;" +
+            "   if [ -n \"$ip\" ] && [ -n \"$gw\" ]; then" +
+            "     name=$(dig +short +time=1 +tries=1 @\"$gw\" -x \"$ip\" 2>/dev/null | grep -v '^;' | head -n1 | sed 's/\\.$//');" +
+            "   fi;" +
+            "   printf '%s\\t%s\\t%s\\n' \"$mac\" \"$ip\" \"$name\";" +
+            " done"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const list = [];
+                const lines = text.split("\n");
+                for (let i = 0; i < lines.length; i++) {
+                    if (!lines[i]) continue;
+                    const p = lines[i].split("\t");
+                    list.push({ mac: p[0] || "", ip: p[1] || "", name: p[2] || "" });
+                }
+                list.sort(function(a, b) {
+                    return (a.name || a.mac).localeCompare(b.name || b.mac);
+                });
+                netRoot.hotspotClientList = list;
+                if (list.length === 0) netRoot.hotspotClientsOpen = false;
+            }
+        }
+    }
+
+    // Clients joining/leaving don't emit NM events, so poll while visible
+    Timer {
+        interval: 3000
+        running: netPopup.visible && netRoot.hotspotActive
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: { if (!hotspotClientsProc.running) hotspotClientsProc.running = true }
+    }
+
+    // Read the saved hotspot password to prefill the settings field
+    Process {
+        id: hotspotReadProc
+        environment: ({ "NM_HS": netRoot.hotspotProfile })
+        // Line 1: SSID (defaults to <hostname>-hotspot if no profile yet), line 2: password
+        command: [
+            "bash", "-c",
+            "ssid=$(nmcli -g 802-11-wireless.ssid c show id \"$NM_HS\" 2>/dev/null);" +
+            "[ -n \"$ssid\" ] || ssid=\"$(hostname)-hotspot\";" +
+            "psk=$(nmcli -s -g 802-11-wireless-security.psk c show id \"$NM_HS\" 2>/dev/null);" +
+            "printf '%s\\n%s\\n' \"$ssid\" \"$psk\""
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.split("\n");
+                // -g escapes ':' and '\\'; splitTerse undoes that
+                netRoot.hotspotSavedSsid = netRoot.splitTerse(lines[0] || "").join(":");
+                netRoot.hotspotSavedPass = (lines[1] || "");
+                if (!netRoot.hotspotEditing) {
+                    hotspotSsidInput.text = netRoot.hotspotSavedSsid;
+                    hotspotPassInput.text = netRoot.hotspotSavedPass;
+                }
+            }
+        }
+    }
+
+    // Set the hotspot SSID + password: modify the profile, or create one if missing.
+    // Restarts the hotspot if it's running so the new settings take effect.
+    // Note: nmcli has no stdin option for `c modify/add`, so the psk is briefly
+    // visible in this process's argv.
+    Process {
+        id: hotspotPassProc
+        property string ssid: ""
+        property string pass: ""
+        environment: ({ "NM_HS": netRoot.hotspotProfile, "NM_SSID": ssid, "NM_PASS": pass })
+        command: [
+            "bash", "-c",
+            "if nmcli -g NAME c show | grep -Fxq -- \"$NM_HS\"; then" +
+            "  nmcli c modify id \"$NM_HS\" 802-11-wireless.ssid \"$NM_SSID\" wifi-sec.key-mgmt wpa-psk wifi-sec.psk \"$NM_PASS\" || exit 1;" +
+            "  if nmcli -g NAME c show --active | grep -Fxq -- \"$NM_HS\"; then nmcli c up id \"$NM_HS\"; fi;" +
+            "else" +
+            "  nmcli c add type wifi con-name \"$NM_HS\" autoconnect no ssid \"$NM_SSID\"" +
+            "    wifi.mode ap wifi.band bg ipv4.method shared ipv6.method ignore" +
+            "    wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp" +
+            "    wifi-sec.psk \"$NM_PASS\";" +
+            "fi"
+        ]
+        onExited: (code) => {
+            if (code !== 0) {
+                netRoot.lastError = "Couldn't save hotspot settings";
+                errorTimer.restart();
+            } else {
+                netRoot.hotspotSavedSsid = ssid;
+                netRoot.hotspotSavedPass = pass;
+                netRoot.hotspotEditing = false;
+            }
+            pass = "";
+            netRoot.refresh();
+        }
     }
 
     // Disconnect: drops every connected ethernet/wifi device at once.
@@ -472,6 +670,43 @@ Item {
             horizontalAlignment: Text.AlignRight
             Layout.maximumWidth: 160
             elide: Text.ElideRight
+        }
+    }
+
+    // Hotspot settings field: read-only until clicked, then the whole form unlocks
+    component HotspotField: TextField {
+        id: hsField
+        property string label: ""
+        signal editRequested()
+
+        Layout.fillWidth: true
+        readOnly: !netRoot.hotspotEditing
+        leftPadding: 48
+        placeholderTextColor: "#6c7086"
+        color: netRoot.hotspotEditing ? "#cdd6f4" : "#a6adc8"
+        font.pixelSize: 12
+        background: Rectangle {
+            color: netRoot.hotspotEditing ? "#1e1e2e" : "#181825"; radius: 4
+            border.color: netRoot.hotspotEditing && hsField.activeFocus ? "#89b4fa" : "#313244"
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                text: hsField.label
+                color: "#6c7086"
+                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true
+            }
+        }
+        Keys.onEscapePressed: netRoot.hotspotEditing = false
+
+        MouseArea {
+            anchors.fill: parent
+            visible: !netRoot.hotspotEditing
+            cursorShape: Qt.IBeamCursor
+            onClicked: {
+                netRoot.hotspotEditing = true;
+                hsField.editRequested();
+                hsField.cursorPosition = hsField.text.length;
+            }
         }
     }
 
@@ -726,6 +961,8 @@ Item {
                 netGrab.active = false;
                 netRoot.expandedSsid = "";
                 netRoot.lastError = "";
+                netRoot.hotspotSettingsOpen = false;
+                netRoot.hotspotClientsOpen = false;
             }
         }
 
@@ -783,12 +1020,137 @@ Item {
                     }
                 }
 
-                ActionButton {
-                    icon: netRoot.netType === "none" ? "\uf0c1" : "\uf127"
-                    text: netRoot.netType === "none" ? "Connect" : "Disconnect"
-                    active: netRoot.netType !== "none"
-                    busy: netRoot.linkBusy
-                    onClicked: netRoot.toggleLink()
+                // Hotspot + settings gear | Connect/Disconnect
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1   // split the row evenly with Disconnect
+                        spacing: 4
+
+                        ActionButton {
+                            icon: "\uf1eb"
+                            text: "Hotspot"
+                            active: netRoot.hotspotActive
+                            busy: netRoot.hotspotBusy
+                            onClicked: netRoot.toggleHotspot()
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 32
+                            radius: 6
+                            color: gearMouse.containsMouse || netRoot.hotspotSettingsOpen ? "#313244" : "#1e1e2e"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\uf013"
+                                color: netRoot.hotspotSettingsOpen ? "#89b4fa" : "#a6adc8"
+                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12
+                            }
+                            MouseArea {
+                                id: gearMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: netRoot.hotspotSettingsOpen = !netRoot.hotspotSettingsOpen
+                            }
+                        }
+                    }
+
+                    ActionButton {
+                        Layout.preferredWidth: 1
+                        icon: netRoot.netType === "none" ? "\uf0c1" : "\uf127"
+                        text: netRoot.netType === "none" ? "Connect" : "Disconnect"
+                        active: netRoot.netType !== "none"
+                        busy: netRoot.linkBusy
+                        onClicked: netRoot.toggleLink()
+                    }
+                }
+
+                // Hotspot settings dropdown: fields are read-only until clicked
+                ColumnLayout {
+                    visible: netRoot.hotspotSettingsOpen
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    HotspotField {
+                        id: hotspotSsidInput
+                        label: "SSID"
+                        placeholderText: netRoot.hotspotEditing ? "Network name..." : "Not set (click to edit)"
+                        onAccepted: { if (netRoot.hotspotEditing) hotspotPassInput.forceActiveFocus() }
+                        onEditRequested: hotspotSsidInput.forceActiveFocus()
+                    }
+
+                    HotspotField {
+                        id: hotspotPassInput
+                        label: "Pass"
+                        placeholderText: netRoot.hotspotEditing ? "New password..." : "Not set (click to edit)"
+                        echoMode: netRoot.hotspotShowPass ? TextInput.Normal : TextInput.Password
+                        onAccepted: { if (netRoot.hotspotEditing) netRoot.saveHotspot(hotspotSsidInput.text, text) }
+                        onEditRequested: hotspotPassInput.forceActiveFocus()
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        // Save (only does something while editing)
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 28
+                            radius: 4
+                            opacity: netRoot.hotspotEditing ? 1 : 0.4
+                            color: hsSaveMouse.containsMouse && netRoot.hotspotEditing ? "#b4befe" : "#89b4fa"
+                            Text {
+                                anchors.centerIn: parent; text: "Save"; color: "#11111b"
+                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true
+                            }
+                            MouseArea {
+                                id: hsSaveMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: !netRoot.hotspotEditing ? Qt.ArrowCursor
+                                           : hotspotPassProc.running ? Qt.WaitCursor : Qt.PointingHandCursor
+                                onClicked: {
+                                    if (netRoot.hotspotEditing)
+                                        netRoot.saveHotspot(hotspotSsidInput.text, hotspotPassInput.text);
+                                }
+                            }
+                        }
+
+                        // Show / hide password
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 28
+                            radius: 4
+                            color: hsShowMouse.containsMouse ? "#45475a" : "#313244"
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Text {
+                                    text: netRoot.hotspotShowPass ? "" : ""
+                                    color: "#cdd6f4"
+                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12
+                                }
+                                Text {
+                                    text: netRoot.hotspotShowPass ? "Hide password" : "Show password"
+                                    color: "#cdd6f4"
+                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true
+                                }
+                            }
+                            MouseArea {
+                                id: hsShowMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: netRoot.hotspotShowPass = !netRoot.hotspotShowPass
+                            }
+                        }
+                    }
                 }
 
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#313244" }
@@ -804,7 +1166,71 @@ Item {
                 InfoRow {
                     icon: "\uf201"; name: "Signal"
                     value: netRoot.wifiSignal + "%"
-                    visible: netRoot.netType === "wifi"
+                    visible: netRoot.netType === "wifi" && !netRoot.hotspotActive
+                }
+                // Hotspot clients: click to show device names
+                ColumnLayout {
+                    visible: netRoot.hotspotActive
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: clientsRow.implicitHeight
+
+                        InfoRow {
+                            id: clientsRow
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            icon: "\uf0c0"; name: "Hotspot Clients"
+                            value: netRoot.hotspotClients +
+                                   (netRoot.hotspotClients > 0
+                                    ? (netRoot.hotspotClientsOpen ? "  \uf077" : "  \uf078") : "")
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: netRoot.hotspotClients > 0
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: netRoot.hotspotClientsOpen = !netRoot.hotspotClientsOpen
+                        }
+                    }
+
+                    Repeater {
+                        model: netRoot.hotspotClientsOpen ? netRoot.hotspotClientList : []
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 26
+                            radius: 4
+                            color: "#1e1e2e"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 8
+
+                                Text {
+                                    text: "\uf10b"; color: "#a6e3a1"
+                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12
+                                }
+                                Text {
+                                    text: modelData.name || modelData.mac
+                                    color: "#cdd6f4"
+                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                                    font.bold: modelData.name !== ""
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    text: modelData.ip || "--"
+                                    color: "#a6adc8"
+                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Text {
