@@ -32,7 +32,9 @@ Item {
             u++;
         }
         const num = (u === 0 || v >= 9.95) ? v.toFixed(0) : v.toFixed(1);
-        return num + " " + units[u] + "/s";
+        // Pad to 3 chars (monospace) so the bar doesn't shift as values change,
+        // and no space before the unit so the right section stays clear of the clock.
+        return num.padStart(3, " ") + units[u] + "/s";
     }
 
     // Runs every second to query network statistics
@@ -98,6 +100,8 @@ Item {
     RowLayout {
         id: contentRow
         spacing: 8
+        // Text sits ~1px lower than the bar's icons; lift to match
+        transform: Translate { y: -1 }
 
         RowLayout {
             spacing: 2

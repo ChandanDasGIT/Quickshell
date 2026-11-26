@@ -51,6 +51,8 @@ Item {
                 visible: seg.label.length > 0
                 color: Theme.iconColor
                 font.pixelSize: 16
+                // Noto Sans digits sit ~1px lower than Nerd Font icons; lift to match
+                transform: Translate { y: -1 }
             }
         }
 

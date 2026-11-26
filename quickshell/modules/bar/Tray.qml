@@ -24,6 +24,8 @@ Rectangle {
         anchors.centerIn: parent
         text: "\u25BC"
         font.pixelSize: 16
+        // The \u25BC glyph sits low in its line box; lift it to the bar's centre
+        transform: Translate { y: -2 }
 
         // Keeps the same color changing animation you originally had
         color: trayPopup.visible ? "#ffffff" : "#cfcfcf"

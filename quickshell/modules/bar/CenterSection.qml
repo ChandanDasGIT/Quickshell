@@ -13,15 +13,47 @@ Row {
         command: ["merkuro-calendar"]
     }
 
-    Text {
+    // Time | date. The separator is a drawn line rather than a "|" glyph,
+    // because the glyph's descender hangs below the digits and looks off-centre.
+    Item {
         id: clock
-        color: Theme.iconColor
-        font.bold: true
-        font.pixelSize: 13
+        implicitWidth: clockRow.implicitWidth
+        implicitHeight: clockRow.implicitHeight
 
         function update() {
             var now = new Date();
-            text = Qt.formatDateTime(now, "hh:mm AP   |   dd-MM-yyyy");
+            timeText.text = Qt.formatDateTime(now, "hh:mm AP");
+            dateText.text = Qt.formatDateTime(now, "dd-MM-yyyy");
+        }
+
+        Row {
+            id: clockRow
+            spacing: 10
+            // Digits sit ~1px lower than the bar's icons; lift to match
+            transform: Translate { y: -1 }
+
+            Text {
+                id: timeText
+                color: Theme.iconColor
+                font.bold: true
+                font.pixelSize: 13
+            }
+
+            Rectangle {
+                width: 1
+                height: 11
+                anchors.verticalCenter: timeText.verticalCenter
+                anchors.verticalCenterOffset: 1
+                color: Theme.iconColor
+                opacity: 0.6
+            }
+
+            Text {
+                id: dateText
+                color: Theme.iconColor
+                font.bold: true
+                font.pixelSize: 13
+            }
         }
 
         Component.onCompleted: update()
