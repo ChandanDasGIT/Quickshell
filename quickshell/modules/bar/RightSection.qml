@@ -359,6 +359,16 @@ Item {
                             powerMenu.visible = false;
                         }
                     }
+
+                    Segment {
+                        Layout.fillWidth: true
+                        label: "ScreenOff"
+                        onClicked: {
+                            powerMenu.visible = false;
+                            // short delay so the click/mouse movement doesn't instantly wake the screen
+                            Quickshell.execDetached(["sh", "-c", "sleep 1 && hyprctl dispatch 'hl.dsp.dpms({ action = \"off\" })'"]);
+                        }
+                    }
                 }
             }
         }
