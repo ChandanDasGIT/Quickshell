@@ -28,9 +28,9 @@ Scope {
     // ---- Persistent Recent Apps Storage ---------------------------------
     Settings {
         id: recentStore
-        location: "file://" + Quickshell.env("HOME") + "/.local/state/quickshell/applauncher.ini"
         category: "AppLauncher"
         property var recentAppIds: []
+        property bool showAll: false    // last chosen view: all-apps grid (true) vs recents (false)
     }
 
     property var recentAppIds: recentStore.recentAppIds || []
@@ -49,12 +49,11 @@ Scope {
     // ---- Public API -----------------------------------------------------
     property bool isVisible: false
     property string query: ""
-    property bool showAll: false        // grid of every app instead of recents
+    property bool showAll: recentStore.showAll  // grid of every app instead of recents; remembered
     property int gridColumns: 5
 
     function show() {
         query = "";
-        showAll = false;
         isVisible = true;
     }
 
@@ -82,6 +81,7 @@ Scope {
 
     function toggleShowAll() {
         showAll = !showAll;
+        recentStore.showAll = showAll;
         list.currentIndex = 0;
         grid.currentIndex = 0;
         searchInput.forceActiveFocus();
